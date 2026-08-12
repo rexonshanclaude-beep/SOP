@@ -8,15 +8,19 @@
 
 ---
 
-## 兩個工具
+## 直接開始用
+
+### 👉 **https://rexonshanclaude-beep.github.io/SOP/**
+
+點了就能用，不用下載、不用安裝。
 
 | 工具 | 做什麼 |
 |------|--------|
-| **[SOP 錄影標註器](tools/SOP標註器.html)** | 把螢幕錄影變成有順序、有截圖、有說明的步驟清單。播到關鍵畫面按一下、寫一句在幹嘛，可以在截圖上畫箭頭／框選／遮蔽敏感資料 |
-| **[SOP 工時盤點填表器](tools/SOP填表器.html)** | 把步驟換算成工時，填「現況」與「AI 導入後」兩條流程，產出交件檔 `.sop.html` |
+| [**錄影標註器**](https://rexonshanclaude-beep.github.io/SOP/tools/SOP標註器.html) | 把螢幕錄影變成有順序、有截圖、有說明的步驟清單。播到關鍵畫面按一下、寫一句在幹嘛，可以在截圖上畫箭頭／框選／遮蔽敏感資料 |
+| [**工時盤點填表器**](https://rexonshanclaude-beep.github.io/SOP/tools/SOP填表器.html) | 把步驟換算成工時，填「現況」與「AI 導入後」兩條流程，產出交件檔 `.sop.html` |
 
-> **下載方式**：右上角 **Code → Download ZIP**，解壓縮後打開 `tools/` 裡的兩個 `.html`。
-> 直接點上面的連結會看到原始碼，不是打開工具。
+想離線用就按右上角 **Code → Download ZIP**，解壓縮後打開 `tools/` 裡的兩個 `.html`，
+功能完全一樣。（這個頁面上的 `tools/...` 連結會看到原始碼，不是打開工具 —— 用上面的網址。）
 
 ---
 
