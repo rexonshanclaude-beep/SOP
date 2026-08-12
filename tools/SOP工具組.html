@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOP 流程盤點工具組</title>
+<title>SOP 工具組</title>
 <style>
 :root{
   --bg:#eef1f5;
@@ -585,7 +585,7 @@ button,input,select,textarea{font-family:inherit}
 
 <div class="view app-mark on" id="vMark">
 <div class="top">
-  <h1>SOP 錄影標註器</h1>
+  
   <span class="st" id="stat">尚未載入影片</span>
   <div class="tools">
     <button class="tb" id="btnOpen">匯入影片</button>
@@ -605,7 +605,7 @@ button,input,select,textarea{font-family:inherit}
   <!-- 左：步驟 -->
   <div class="left">
     <div class="lhead">
-      <h3>標註點</h3><span class="n" id="cnt">0</span>
+      <h3>步驟</h3><span class="n" id="cnt">0</span>
       <button class="sortbtn" id="btnSort" disabled>依時間重排</button>
     </div>
     <div class="reorder" id="reorderHint">
@@ -728,7 +728,7 @@ button,input,select,textarea{font-family:inherit}
 <div class="top">
   <div class="wrap">
     <div class="tline">
-      <h1>SOP 工時盤點填表器</h1>
+      
       <span id="saveState" style="font-size:12px;color:#8fa6c4"></span>
       <div class="tools">
         <button class="tb" id="btnImport">開啟既有檔案</button>
@@ -1726,7 +1726,7 @@ $('btnOut').onclick = () => {
   const marked = S.marks.filter(m => nShapes(m)).length;
   const noNote = S.marks.filter(m => !m.note.trim()).length;
   $('outSum').innerHTML =
-    `<span>標註點 <b>${S.marks.length}</b></span>` +
+    `<span>步驟 <b>${S.marks.length}</b></span>` +
     `<span>有截圖 <b>${shots}</b></span>` +
     `<span>有標記 <b>${marked}</b></span>` +
     (noNote ? `<span style="color:var(--amber)">沒寫註解 <b>${noNote}</b></span>`
@@ -1773,18 +1773,18 @@ function buildDocs(){
     }))
   };
 
-  let md = `# 錄影標註稿\n\n`;
+  let md = `# 操作步驟稿\n\n`;
   md += `| 項目 | 內容 |\n|------|------|\n`;
-  md += `| 來源影片 | \`${S.name}\` |\n`;
-  md += `| 影片長度 | ${t0(S.dur)}（${S.dur.toFixed(1)} 秒）· ${S.w}×${S.h} |\n`;
-  md += `| 標註點 | ${S.marks.length} 個 |\n`;
+  md += S.name ? `| 來源影片 | \`${S.name}\` |\n`               : `| 來源 | 使用者上傳／貼上的截圖 |\n`;
+  if (S.name) md += `| 影片長度 | ${t0(S.dur)}（${S.dur.toFixed(1)} 秒）· ${S.w}×${S.h} |\n`;
+  md += `| 步驟 | ${S.marks.length} 個 |\n`;
   md += `| 順序 | ${ro ? '**使用者已調整過** —— 下面的順序才是正確流程順序，與影片時間先後不同'
-                      : '與影片時間先後一致'} |\n`;
+                      : (S.name ? '與影片時間先後一致' : '使用者排定的順序')} |\n`;
   md += `| 匯出時間 | ${stamp} |\n\n`;
   md += `> **給 AI 的說明**\n`;
-  md += `> 1. 這是使用者親手標的操作流程，每個標註點大致對應 SOP 的一個步驟。\n`;
+  md += `> 1. 這是使用者親手整理的操作流程，每一節就是 SOP 的一個步驟。\n`;
   md += `> 2. 下方的編號順序就是**正確的流程順序**，請照這個順序建步驟。\n`;
-  md += `> 3.「這一步耗時」是這個標註點到時間軸上下一個標註點的秒數，`;
+  md += `> 3.「這一步耗時」只有從錄影標出來的步驟才有，是這一刀到下一刀的秒數，`;
   md += `可當作該步驟「每件時間」的候選值（來源標記為：錄影實測）。\n`;
   md += `> 4. 截圖在 \`shots/\`，**請實際讀圖**確認系統名稱、檔案名稱與畫面內容，不要只看註解。\n`;
   md += `> 5. 截圖上的標記：**箭頭／手指／游標／框選**是使用者指出「這裡才是重點」，請優先看那個位置；`;
