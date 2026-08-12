@@ -3,35 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOP 流程盤點工具組</title>
+<title>SOP 工具組</title>
 <style>
 :root{
   --bg:#eef1f5; --card:#fff; --ink:#16202b; --ink2:#3a4a5c; --ink3:#7c8b9c;
   --line:#dfe5ec; --line2:#eaeff4; --brand:#2f6df6; --brand2:#1b4fd0;
-  --ai:#0f9d6e; --amber:#b8860b; --r:14px;
+  --amber:#b8860b; --r:14px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.7 "Segoe UI","Microsoft JhengHei",system-ui,sans-serif}
-.wrap{max-width:920px;margin:0 auto;padding:48px 22px 72px}
-header{margin-bottom:34px}
-h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px;text-wrap:balance}
-.lead{font-size:16px;color:var(--ink2);margin:0 0 6px;max-width:62ch}
+.wrap{max-width:880px;margin:0 auto;padding:52px 22px 76px}
+h1{font-size:31px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.lead{font-size:16px;color:var(--ink2);margin:0 0 8px;max-width:60ch}
 .sub{font-size:13.5px;color:var(--ink3);margin:0}
-.tools{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:30px 0 12px}
-@media(max-width:720px){.tools{grid-template-columns:1fr}}
-.tool{display:block;text-decoration:none;color:inherit;background:var(--card);
-  border:1px solid var(--line);border-radius:var(--r);padding:22px 22px 24px;
+
+.cta{display:block;text-decoration:none;color:inherit;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);padding:26px 28px;margin:32px 0 10px;
   transition:border-color .15s,transform .15s,box-shadow .15s}
-.tool:hover{border-color:var(--brand);transform:translateY(-2px);
-  box-shadow:0 8px 22px rgba(47,109,246,.10)}
-.tool:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
-.step{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.06em;
-  color:var(--brand);background:#eaf1ff;border-radius:99px;padding:3px 10px;margin-bottom:12px}
-.tool h2{font-size:18px;font-weight:800;margin:0 0 8px}
-.tool p{font-size:13.5px;color:var(--ink2);margin:0 0 14px;line-height:1.65}
-.go{font-size:13.5px;font-weight:700;color:var(--brand)}
-.mid{text-align:center;font-size:13px;color:var(--ink3);margin:2px 0 8px}
+.cta:hover{border-color:var(--brand);transform:translateY(-2px);
+  box-shadow:0 10px 26px rgba(47,109,246,.11)}
+.cta:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.cta h2{font-size:21px;font-weight:800;margin:0 0 8px}
+.cta p{font-size:14px;color:var(--ink2);margin:0 0 16px;line-height:1.65}
+.go{font-size:14px;font-weight:800;color:var(--brand)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+@media(max-width:720px){.two{grid-template-columns:1fr}}
+.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.st .n{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;
+  border-radius:99px;background:var(--brand);color:#fff;font-size:12.5px;font-weight:800;
+  margin-bottom:10px}
+.st h3{font-size:15.5px;font-weight:800;margin:0 0 7px}
+.st p{font-size:13.5px;color:var(--ink2);margin:0;line-height:1.65}
+.st .out{display:block;margin-top:10px;font-size:12.5px;color:var(--ink3)}
+
 .box{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
   padding:20px 22px;margin-top:26px}
 .box h3{font-size:15px;font-weight:800;margin:0 0 12px}
@@ -46,43 +52,47 @@ code{background:var(--line2);padding:1px 6px;border-radius:5px;font-size:12.5px}
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>SOP 流程盤點工具組</h1>
-    <p class="lead">把一條天天在做、但沒人寫下來的流程，變成主管看得懂的交件檔 ——
-      現況 vs AI 導入後的工時對照。</p>
-    <p class="sub">單檔網頁，點了就能用。影片和截圖全程留在你自己的電腦上，不會上傳。</p>
-  </header>
+  <h1>SOP 工具組</h1>
+  <p class="lead">把一條天天在做、但沒人寫下來的流程，變成看得懂的文件 ——
+    給同事看的圖解步驟，以及給主管看的工時對照。</p>
+  <p class="sub">單檔網頁，點了就能用。圖片和影片全程留在你自己的電腦上，不會上傳。</p>
 
-  <div class="tools">
-    <a class="tool" href="tools/SOP標註器.html">
-      <span class="step">先做這個（有錄影的話）</span>
-      <h2>錄影標註器</h2>
-      <p>把螢幕錄影標成有順序、有截圖、有說明的步驟清單。可在截圖上畫箭頭、框選重點、遮蔽敏感資料。</p>
-      <span class="go">開始標註 →</span>
-    </a>
-    <a class="tool" href="tools/SOP填表器.html">
-      <span class="step">最後做這個</span>
-      <h2>工時盤點填表器</h2>
-      <p>換算工時，填「現況」與「AI 導入後」兩條流程，產出交件檔。沒錄影的話直接從這裡開始。</p>
-      <span class="go">開始填表 →</span>
-    </a>
+  <a class="cta" href="tools/SOP工具組.html">
+    <h2>開始製作 →</h2>
+    <p>兩個分頁，隨時切換。沒有錄影也沒關係，貼截圖就能做。</p>
+    <span class="go">開啟工具</span>
+  </a>
+
+  <div class="two">
+    <div class="st">
+      <span class="n">1</span>
+      <h3>SOP 製圖</h3>
+      <p>一步一張圖。可以貼上截圖、拖一批圖片進來，或匯入螢幕錄影自己截。
+        在圖上畫箭頭、框重點、遮蔽敏感資料。</p>
+      <span class="out">產出：圖解 SOP（HTML／PDF）</span>
+    </div>
+    <div class="st">
+      <span class="n">2</span>
+      <h3>SOP 工時紀錄</h3>
+      <p>把步驟換算成工時，填「現況」與「AI 導入後」兩條流程，
+        算出省下多少人時。第一頁做好的可以直接帶過來。</p>
+      <span class="out">產出：交件檔 <code>.sop.html</code></span>
+    </div>
   </div>
-  <p class="mid">兩者中間，把標註匯出的資料夾交給 Claude 之類的助理，請它幫你算工時、規劃導入後流程。</p>
 
   <div class="box">
     <h3>先看看做出來長什麼樣</h3>
     <ul>
-      <li><a href="examples/範例成品_品保部.sop.html">範例交件檔</a> —— 完整的工時對照</li>
+      <li><a href="examples/範例成品_品保部.sop.html">範例交件檔</a> —— 現況 vs AI 導入後的工時對照</li>
       <li><a href="examples/示範_含截圖.sop.html">帶截圖的版本</a></li>
       <li><a href="https://github.com/rexonshanclaude-beep/SOP/tree/main/examples">範例標註資料夾</a>
-        —— 標註器匯出的東西長什麼樣（<code>標註稿.md</code> + <code>marks.json</code> + <code>shots/</code>）</li>
-      <li><a href="tools/標註器_使用說明.md">標註器使用說明</a></li>
+        —— 匯出給 AI 的東西長什麼樣（<code>標註稿.md</code> + <code>marks.json</code> + <code>shots/</code>）</li>
     </ul>
   </div>
 
   <div class="note">
-    <b>送出交件檔之前先看一眼截圖。</b>裡面是內部系統畫面，可能帶客戶名稱、料號、報價或個資 ——
-    不該外流的地方，回標註器用「遮蔽」蓋掉再匯出一次。
+    <b>送出前先看一眼截圖。</b>裡面是內部系統畫面，可能帶客戶名稱、料號、報價或個資 ——
+    不該外流的地方用工具裡的<b>遮蔽</b>蓋掉再匯出。
   </div>
 
   <footer>
