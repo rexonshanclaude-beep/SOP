@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP 流程與工時</title>
+<style>
+:root{--bg:#eef1f5;--panel:#fff;--ink:#16202b;--ink2:#5a6b7c;--ink3:#8b9aa9;--line:#dfe5ec;--line2:#eef2f6;
+--now:#5a6b7c;--ai:#1f9d6b;--ai-soft:#e7f6ef;--warn:#d4483b;--warn-soft:#fdecea;
+--manual:#e8833a;--manual-soft:#fdf1e6;--system:#3b7fd4;--system-soft:#e9f1fc;
+--a-exec:#5a6b7c;--a-judge:#8256c8;--a-review:#c05a86;--a-wait:#8b9aa9;--a-maint:#b07d0a;
+--amber:#b07d0a;--amber-soft:#fdf5e2;
+--font:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:700}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 70px}
+.doc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px 30px 32px}
+.hd{border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.hd h2{font-size:21px}.hd .m{font-size:12px;color:var(--ink3);margin-top:4px}
+.hd .vol{text-align:right;font-size:12px;color:var(--ink3);white-space:nowrap}
+.hd .vol b{display:block;font-size:20px;color:var(--ink)}
+.bar1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sub{display:inline-flex;background:#e4e9ef;padding:3px;border-radius:9px;gap:2px}
+.sb{background:none;border:0;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink2);padding:7px 15px;border-radius:7px;cursor:pointer}
+.sb.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,32,45,.1)}
+.seg{display:inline-flex;background:#e4e9ef;border-radius:9px;padding:3px;gap:2px;margin-left:auto}
+.seg button{border:0;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 12px;border-radius:7px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,32,45,.1)}
+.v{display:none}.v.on{display:block}
+.s3{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:20px;flex-wrap:wrap}
+.s3>div{flex:1;min-width:170px;padding:14px 17px;border-left:1px solid var(--line)}
+.s3>div:first-child{border-left:0}
+.s3 .l{font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.05em}
+.s3 .n{font-size:24px;font-weight:800;letter-spacing:-.02em}.s3 .n small{font-size:13px;font-weight:600;color:var(--ink2)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.ch{display:flex;align-items:baseline;gap:9px;padding:9px 13px;border-radius:8px;margin-bottom:11px}
+.ch.a{background:#e7ebf1}.ch.b{background:var(--ai-soft)}
+.ch b{font-size:13.5px}.ch .c{font-size:12px;color:var(--ink3)}.ch .t{margin-left:auto;font-size:12px;font-weight:700}
+.cf{margin-top:11px;padding:11px 13px;border-radius:8px;display:flex;align-items:baseline;gap:8px;font-size:12.5px}
+.cf.a{background:#f4f6f9;border:1px solid var(--line)}.cf.b{background:var(--ai-soft);border:1px solid #bde5d3}
+.cf b{font-size:19px;font-weight:800}
+.node{border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:#fff;display:flex;gap:11px;min-height:86px}
+.node.hot{border-color:#eab4ad;background:var(--warn-soft)}
+.node.aft{border-color:#c6e6d6;background:#fbfefc}
+.node.na{border-color:#eec98a;background:#fffcf3}
+.nt{width:72px;height:52px;border-radius:5px;overflow:hidden;border:1px solid var(--line);flex:none;background:#f3f6f9;cursor:zoom-in}
+.nt.ph{border:1.5px dashed #d3dce5;cursor:default}
+.nt img{width:100%;height:100%;object-fit:cover;display:block}
+.nb{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.n1{display:flex;gap:7px;align-items:center}
+.ix{width:19px;height:19px;border-radius:5px;background:var(--ink);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.node.aft .ix{background:var(--ai)}
+.node h4{font-size:13.5px;line-height:1.35}
+.nd{font-size:11.5px;color:var(--ink3);line-height:1.45;white-space:pre-wrap}
+.nm{margin-top:auto;padding-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--ink2)}
+.tg,.tg2{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;border:1px solid transparent}
+.tg2{background:#fff;border-color:var(--line)}
+.k-manual{background:var(--manual-soft);color:var(--manual);border-color:#f2d7bd}
+.k-system{background:var(--system-soft);color:var(--system);border-color:#c8ddf5}
+.k-ai{background:var(--ai-soft);color:var(--ai);border-color:#bde5d3}
+.a-exec{color:var(--a-exec)}
+.a-judge{color:var(--a-judge);border-color:#ddd0f0}
+.a-review{color:var(--a-review);border-color:#f0cfdd}
+.a-wait{color:var(--a-wait)}
+.a-maint{color:var(--a-maint);border-color:#eddda8;background:var(--amber-soft)}
+.lg b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.p{background:#f1f4f8;border:1px solid var(--line);padding:1px 7px;border-radius:99px;font-variant-numeric:tabular-nums}
+.p.o{background:#fff;border-style:dashed}
+.p.r{background:var(--warn-soft);border-color:#f5cdc8;color:var(--warn);font-weight:700}
+.p.g{background:var(--ai-soft);border-color:#bde5d3;color:var(--ai);font-weight:700}
+.p.na{background:var(--amber-soft);border-color:#eddda8;color:var(--amber);font-weight:700}
+.sc{height:4px;background:#f0f3f6;border-radius:99px;overflow:hidden;margin-top:5px}
+.sc i{display:block;height:100%;border-radius:99px;min-width:2px}
+.cn{height:16px;width:1.5px;background:#cdd8e4;margin:0 auto}
+.col1{max-width:680px}
+.lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:20px;padding-top:14px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.ft{margin-top:16px;font-size:11.5px;color:var(--ink3);text-align:center}
+.lb{position:fixed;inset:0;background:rgba(15,22,32,.85);display:none;align-items:center;justify-content:center;z-index:9;padding:36px}
+.lb.on{display:flex}.lb img{max-width:100%;max-height:100%;border-radius:8px}
+.lb .x{position:absolute;top:18px;right:26px;color:#fff;font-size:32px;cursor:pointer;opacity:.75}
+@media(max-width:900px){.cmp{grid-template-columns:1fr}}
+@media print{body{background:#fff}.sub,.seg,.lb{display:none}.doc{border:0;padding:0}.v{display:block!important}}
+</style></head><body>
+<div class="wrap"><div class="doc">
+  <div class="hd"><div><h2 id="h-title"></h2><div class="m" id="h-meta"></div></div>
+    <div class="vol" id="h-vol"></div></div>
+  <div class="bar1">
+    <div class="sub">
+      <button class="sb on" data-v="v-cmp">⇄ 兩版對照</button>
+      <button class="sb" data-v="v-now">現況流程</button>
+      <button class="sb" data-v="v-aft">AI 導入後流程</button>
+    </div>
+    <div class="seg" id="seg"></div>
+  </div>
+  <div class="v on" id="v-cmp">
+    <div class="s3" id="stat"></div>
+    <div class="cmp">
+      <div><div class="ch a"><b>現況流程</b><span class="c" id="cn"></span><span class="t" id="tn"></span></div>
+        <div id="colA"></div><div class="cf a">合計 <b id="fn"></b> <span class="uu"></span></div></div>
+      <div><div class="ch b"><b>AI 導入後流程</b><span class="c" id="ca"></span><span class="t" id="ta" style="color:var(--ai)"></span></div>
+        <div id="colB"></div><div class="cf b">合計 <b id="fa" style="color:var(--ai)"></b> <span class="uu"></span></div></div>
+    </div>
+    <div class="lg" id="lg"></div>
+  </div>
+  <div class="v" id="v-now"><div class="col1" id="colA2"></div></div>
+  <div class="v" id="v-aft"><div class="col1" id="colB2"></div></div>
+  <div class="ft" id="ft"></div>
+</div></div>
+<div class="lb" id="lb"><span class="x">×</span><img id="lbi" alt=""></div>
+<script type="application/json" id="sop-data">{"schema":"sop-timesheet/3","dept":"品質保證部","title":"供應商自主檢驗表異常稽核與退件通知","author":"","volume":176,"volEvery":1,"volumePer":"day","showUnit":"day","now":[{"id":"sv0a53iv","kind":"manual","act":"exec","title":"搜尋自主檢驗表空白資料","desc":"於 QMS 逐一開啟四大類檢驗表，找出未填寫欄位","dur":10,"unit":"sec","qty":176,"hc":1,"every":1,"freq":"day","obj":"供應商自主檢驗表（四大類）","iface":"QMS","thumb":null,"full":null},{"id":"sghl2ini","kind":"manual","act":"judge","title":"判定 QMS 分類是否正確","desc":"比對料件性質與檢驗表分類，判斷歸類有無錯誤","dur":12,"unit":"sec","qty":176,"hc":1,"every":1,"freq":"day","obj":"檢驗表分類與料件性質","iface":"QMS","thumb":null,"full":null},{"id":"sug2v9c0","kind":"manual","act":"exec","title":"以料件標號於 TT 系統查廠商名稱","desc":"切換至 TIPTOP，輸入料號查詢供應商主檔","dur":43,"unit":"sec","qty":176,"hc":1,"every":1,"freq":"day","obj":"料號對應的供應商主檔","iface":"TIPTOP","thumb":null,"full":null},{"id":"sgmjsaea","kind":"manual","act":"exec","title":"依廠商名稱查詢郵件地址","desc":"翻查通訊錄或既往信件，取得窗口信箱","dur":20,"unit":"sec","qty":176,"hc":1,"every":1,"freq":"day","obj":"廠商窗口通訊錄","iface":"Excel","thumb":null,"full":null},{"id":"s9vqnksx","kind":"manual","act":"exec","title":"發信通知廠商並辦理退貨","desc":"逐件撰寫退件通知信、附加檢驗表、寄出並登錄","dur":180,"unit":"sec","qty":176,"hc":1,"every":1,"freq":"day","obj":"退件通知信與檢驗表附件","iface":"Outlook / 信件","thumb":null,"full":null}],"aft":[{"id":"su8wcus7","kind":"ai","act":"exec","title":"AI 自動掃描 QMS、判定分類、反查廠商與信箱","desc":"每日排程觸發，四個查找動作一次完成","dur":0,"unit":"sec","qty":1,"hc":1,"every":1,"freq":"day","obj":"自主檢驗表 → 異常件清單","iface":"AI 工具","thumb":null,"full":null},{"id":"soxkuubn","kind":"manual","act":"review","title":"批次審核退件通知信並一次送出","desc":"AI 產生整批草稿，檢驗課人員審核批准後送出","dur":180,"unit":"sec","qty":1,"hc":1,"every":1,"freq":"day","obj":"AI 產生的退件通知草稿","iface":"Outlook / 信件","thumb":null,"full":null},{"id":"s6gg3u10","kind":"manual","act":"maint","title":"維護判定規則與廠商對照表","desc":"每週檢視誤判案例，調整規則、更新過期信箱","dur":30,"unit":"min","qty":1,"hc":1,"every":1,"freq":"week","obj":"判定規則表、廠商信箱對照","iface":"Excel","thumb":null,"full":null}],"updatedAt":null,"exportedAt":"2026-08-12T00:00:00.000Z","config":{"daysPerMonth":20.8,"weeksPerMonth":4.33},"summary":{"nowTotal":269.4755555555555,"nowComplete":true,"aftTotal":3.205,"aftComplete":true,"nowSteps":5,"aftSteps":3,"savePct":98.81065279060563}}</script>
+<script>
+var DATA=JSON.parse(document.getElementById('sop-data').textContent);
+var KL={manual:'人工',system:'系統',ai:'AI'};                                  // 第一層｜誰出力
+var AL={exec:'執行',judge:'判斷',review:'審核',wait:'等待',maint:'維護'};       // 第二層｜在做什麼
+var KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
+var D=(DATA.config&&DATA.config.daysPerMonth)||20.8, W=(DATA.config&&DATA.config.weeksPerMonth)||4.33;
+var PM={day:D,week:W,month:1,quarter:1/3,year:1/12};
+var UN={sec:1,min:60,hr:3600}, UL={sec:'秒',min:'分',hr:'小時'};
+var PL={day:'日',week:'週',month:'月',quarter:'季',year:'年'};
+var SH=[{v:'day',l:'每日',d:D,u:'人時/日'},{v:'week',l:'每週',d:W,u:'人時/週'},{v:'month',l:'每月',d:1,u:'人時/月'}];
+var cur=DATA.showUnit||'day';
+function U(){ for(var i=0;i<SH.length;i++) if(SH[i].v===cur) return SH[i]; return SH[0]; }
+function cv(m){ return m==null?null:m/U().d; }
+function ev(s){ var n=Number(s.every); return n>0?n:1; }
+function occ(s){ return s.freq==='none'?0:PM[s.freq]/ev(s); }
+function FLT(s){ if(s.freq==='none')return '不定期';
+  var n=ev(s), u=PL[s.freq]||''; return n===1?'每'+u:'每 '+n+' '+u; }
+function DUR(s){ return (s.dur==null||s.dur==='')?'—':s.dur+' '+(UL[s.unit]||''); }
+function QTY(s){ if(s.qty==null||s.qty==='')return null; var q=Number(s.qty); return q>=0?q:null; }
+function mh(s){ if(s.dur==null||s.dur==='')return null; var q=QTY(s); if(q==null)return null;
+  return Number(s.dur)*(UN[s.unit]||60)*q*(Number(s.hc)||0)*occ(s)/3600; }
+function f(n){ return n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
+  :(n>0&&n<0.01?'<0.01':n.toFixed(2)); }
+function tot(a){ var t=0; a.forEach(function(s){var m=mh(s); if(m!=null)t+=m;}); return t; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+var NOW=DATA.now||[], AFT=DATA.aft||[], tn=tot(NOW), ta=tot(AFT);
+var all=NOW.concat(AFT).map(mh).filter(function(v){return v!=null;});
+var GMAX=all.length?Math.max.apply(null,all):0;
+var pkN=Math.max.apply(null,NOW.map(mh).map(function(v){return v||0;}).concat([0]));
+var pkA=Math.max.apply(null,AFT.map(mh).map(function(v){return v||0;}).concat([0]));
+
+document.getElementById('h-title').textContent=DATA.title||'（未填題目）';
+document.getElementById('h-meta').textContent=[DATA.dept||'（未填部門）',
+  DATA.author?'填表：'+DATA.author:'', DATA.exportedAt?'匯出於 '+DATA.exportedAt.slice(0,10):'']
+  .filter(Boolean).join('　·　');
+document.getElementById('h-vol').innerHTML=DATA.volume>0?
+  '處理量<b>'+DATA.volume+'</b>件 / 每 '+(Number(DATA.volEvery)>1?DATA.volEvery+' ':'')+(PL[DATA.volumePer]||''):'';
+
+function node(s,i,isAft,pk,showPct,colTot){
+  var m=mh(s), na=(m==null), hot=(m!=null&&m===pk&&m>0);
+  var w=(m!=null&&GMAX>0)?Math.max(m/GMAX*100,m>0?1:0):0;
+  return '<div class="node'+(isAft?' aft':'')+(hot?' hot':'')+(na?' na':'')+'">'+
+   (s.thumb?'<div class="nt" data-full="'+(s.full||s.thumb)+'"><img src="'+s.thumb+'" alt=""></div>'
+           :'<div class="nt ph"></div>')+
+   '<div class="nb"><div class="n1"><div class="ix">'+(i+1)+'</div><h4>'+esc(s.title||'（未命名）')+'</h4></div>'+
+   (s.desc?'<div class="nd">'+esc(s.desc)+'</div>':'')+
+   '<div class="nm"><span class="tg k-'+s.kind+'">'+(KL[s.kind]||'')+'</span>'+
+   '<span class="tg2 a-'+s.act+'">'+(AL[s.act]||'')+'</span>'+
+   (s.obj?'<span class="p o">'+esc(s.obj)+'</span>':'')+
+   (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
+   '<span class="p'+(hot?' r':'')+'">每件 '+DUR(s)+' · 共 '+(QTY(s)==null?'—':QTY(s))+' 件 · '+
+     FLT(s)+' · '+(s.hc||0)+' 人</span>'+
+   '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
+     (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
+   '</div><div class="sc"><i style="width:'+w+'%;background:'+
+     (na?'var(--amber)':hot?'var(--warn)':(KC[s.kind]||'var(--now)'))+'"></i></div>'+
+   '</div></div>';
+}
+function col(arr,isAft,el,pk,showPct,colTot){
+  document.getElementById(el).innerHTML=arr.length?arr.map(function(s,i){
+    return node(s,i,isAft,pk,showPct,colTot)+(i<arr.length-1?'<div class="cn"></div>':'');
+  }).join(''):'<div style="padding:26px;text-align:center;color:var(--ink3);border:1.5px dashed var(--line);border-radius:9px">尚未填寫</div>';
+}
+function paint(){
+  var u=U(), pct=tn>0?(tn-ta)/tn*100:null;
+  document.getElementById('stat').innerHTML=
+   '<div><div class="l">現況</div><div class="n">'+f(cv(tn))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+NOW.length+' 步</div></div>'+
+   '<div><div class="l">AI 導入後</div><div class="n" style="color:var(--ai)">'+f(cv(ta))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+AFT.length+' 步</div></div>'+
+   '<div><div class="l">淨改善</div><div class="n" style="color:var(--warn)">'+
+   (pct==null?'—':(pct>=0?'↓ ':'↑ ')+Math.abs(pct).toFixed(1)+'<small>%</small>')+'</div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+
+   (pct==null?'資料不足':'淨省 '+f(cv(tn-ta))+' '+u.u)+'</div></div>';
+  col(NOW,false,'colA',pkN,false,0); col(AFT,true,'colB',pkA,false,0);
+  col(NOW,false,'colA2',pkN,true,tn); col(AFT,true,'colB2',pkA,true,ta);
+  document.getElementById('cn').textContent=NOW.length+' 步';
+  document.getElementById('ca').textContent=AFT.length+' 步';
+  document.getElementById('tn').textContent=f(cv(tn))+' '+u.u;
+  document.getElementById('ta').textContent=f(cv(ta))+' '+u.u;
+  document.getElementById('fn').textContent=f(cv(tn));
+  document.getElementById('fa').textContent=f(cv(ta));
+  var uu=document.querySelectorAll('.uu');
+  for(var k=0;k<uu.length;k++) uu[k].textContent=u.u;
+  document.getElementById('seg').innerHTML=SH.map(function(x){
+    return '<button data-u="'+x.v+'"'+(x.v===cur?' class="on"':'')+'>'+x.l+'</button>';}).join('');
+  document.getElementById('ft').textContent=
+    '換算基準：每月 '+D+' 個工作日、'+W+' 週　·　目前顯示單位：'+u.l+
+    '　·　由 SOP 工時盤點填表器產出';
+}
+document.getElementById('lg').innerHTML=
+ ['manual','system','ai'].map(function(k){
+   return '<span><b style="background:'+KC[k]+'"></b>'+KL[k]+'</span>';}).join('')+
+ '<span>｜白框標籤＝執行／判斷／審核／等待／維護</span>'+
+ '<span style="margin-left:auto">兩欄比例尺相同　·　黃底＝工時資料不足　·　點縮圖放大</span>';
+paint();
+
+var sbs=document.querySelectorAll('.sb');
+for(var i=0;i<sbs.length;i++){ sbs[i].onclick=(function(b){ return function(){
+  for(var j=0;j<sbs.length;j++){ sbs[j].classList.toggle('on',sbs[j]===b);
+    document.getElementById(sbs[j].dataset.v).classList.toggle('on',sbs[j]===b); }
+};})(sbs[i]); }
+var lb=document.getElementById('lb');
+document.addEventListener('click',function(e){
+  var b=e.target.closest?e.target.closest('#seg button'):null;
+  if(b){ cur=b.getAttribute('data-u'); paint(); return; }
+  var t=e.target.closest?e.target.closest('[data-full]'):null;
+  if(t){ document.getElementById('lbi').src=t.getAttribute('data-full'); lb.classList.add('on'); }
+  else if(e.target.closest&&e.target.closest('.lb')) lb.classList.remove('on');
+});
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') lb.classList.remove('on'); });
+</script></body></html>

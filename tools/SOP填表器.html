@@ -1,0 +1,1435 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP 工時盤點填表器</title>
+<style>
+:root{
+  --bg:#eef1f5;--panel:#fff;--ink:#16202b;--ink2:#5a6b7c;--ink3:#8b9aa9;
+  --line:#dfe5ec;--line2:#eef2f6;
+  --brand:#2f5fd0;--brand-soft:#eaf0fd;
+  --now:#5a6b7c;
+  /* 第一層｜誰出力 */
+  --manual:#e8833a;--manual-soft:#fdf1e6;
+  --system:#3b7fd4;--system-soft:#e9f1fc;
+  --ai:#1f9d6b;--ai-soft:#e7f6ef;
+  /* 第二層｜在做什麼（只上文字色，視覺上讓位給第一層） */
+  --a-exec:#5a6b7c;--a-judge:#8256c8;--a-review:#c05a86;--a-wait:#8b9aa9;--a-maint:#b07d0a;
+  --warn:#d4483b;--warn-soft:#fdecea;
+  --amber:#b07d0a;--amber-soft:#fdf5e2;
+  --r:10px;--font:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:700}
+button,input,select,textarea{font-family:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px 90px}
+
+/* 標頭 */
+.top{background:linear-gradient(160deg,#1c2a3c 0%,#2a4166 100%);color:#fff;padding:20px 0 0;position:sticky;top:0;z-index:20}
+.top .wrap{padding-bottom:0}
+.tline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.top h1{font-size:18px;color:#fff;white-space:nowrap}
+.top .tools{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+.tb{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.2);color:#dce6f4;
+  font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.tb:hover{background:rgba(255,255,255,.2);color:#fff}
+.tb.go{background:#fff;color:#1c2a3c;border-color:#fff}
+.tb.go:hover{background:#e8eef7}
+.tb:disabled{opacity:.4;cursor:not-allowed}
+.tabs{display:flex;gap:4px}
+.tab{background:none;border:0;color:#9fb3cd;font-size:14px;font-weight:600;padding:10px 20px;
+  cursor:pointer;border-radius:8px 8px 0 0}
+.tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.tab.on{background:var(--bg);color:var(--ink)}
+.tab b{display:inline-block;min-width:18px;padding:0 5px;border-radius:99px;background:rgba(255,255,255,.18);
+  font-size:11px;margin-left:6px;vertical-align:1px}
+.tab.on b{background:var(--line)}
+
+/* 版面 */
+.grid{display:grid;grid-template-columns:1fr 356px;gap:18px;align-items:start;padding-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chead h3{font-size:15px}
+.chead .sub{font-size:12px;color:var(--ink3);font-weight:400;margin-top:1px}
+.pane{display:none}.pane.on{display:block}
+
+/* 單位切換 */
+.seg{display:inline-flex;background:#eef2f6;border-radius:8px;padding:2px;gap:2px;flex:none}
+.seg button{border:0;background:none;font-size:11.5px;font-weight:700;color:var(--ink3);
+  padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.seg button:hover{color:var(--ink2)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,32,45,.13)}
+
+/* 基本資料 */
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;padding:14px 16px}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld label{font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.03em}
+.fld .hint{font-size:11px;color:var(--ink3);font-weight:400}
+input.i,select.i,textarea.i{border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13.5px;
+  color:var(--ink);background:#fff;outline:none;width:100%;min-width:0}
+input.i:focus,select.i:focus,textarea.i:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+input.i.err,select.i.err{border-color:#e9a49c;background:#fffbfa}
+.vol{display:flex;gap:6px;align-items:center}
+.vol input{width:78px;text-align:right}
+
+/* 步驟列 */
+.steps{padding:10px}
+.step{display:grid;grid-template-columns:26px 96px 1fr;gap:11px;padding:11px;border-radius:9px;
+  border:1px solid var(--line2);margin-bottom:8px;background:#fcfdfe;position:relative}
+.step:hover{border-color:#cdd8e4;background:#fff}
+.step.act{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);background:#fff}
+.step.warnrow{border-color:#f0d59a;background:#fffdf6}
+.ord{display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:2px}
+.ord .n{width:22px;height:22px;border-radius:6px;background:var(--ink);color:#fff;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;
+  touch-action:none}   /* 觸控時把手不讓瀏覽器捲頁，拖曳才抓得住 */
+.ord .n:hover{box-shadow:0 0 0 3px var(--brand-soft)}
+.ord .n:active{cursor:grabbing}
+.pane.aft .ord .n{background:var(--ai)}
+/* 拖曳排序：來源列淡出，目標列上／下緣長出一條藍線指出會插進哪裡 */
+body.dragging-on{user-select:none;cursor:grabbing}
+.step.dragging{opacity:.35}
+.step.dropbefore{box-shadow:inset 0 3px 0 0 var(--brand)}
+.step.dropafter{box-shadow:inset 0 -3px 0 0 var(--brand)}
+.xbtn{flex:none;width:22px;height:22px;border:0;background:none;color:#c2cdd9;font-size:13px;line-height:1;
+  cursor:pointer;border-radius:6px;padding:0}
+.xbtn:hover{background:var(--warn-soft);color:var(--warn)}
+
+.thumb{width:96px;height:68px;border-radius:7px;overflow:hidden;border:1px solid var(--line);background:#f3f6f9;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb.empty{border:1.5px dashed #c8d3de;color:var(--ink3);font-size:10.5px;text-align:center;line-height:1.4;padding:4px}
+.thumb.empty:hover,.thumb.over{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.thumb .rm{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:5px;border:0;
+  background:rgba(20,32,45,.62);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:none;padding:0}
+.thumb:hover .rm{display:block}
+.thumb .rm:hover{background:var(--warn)}
+
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.r1{display:flex;gap:9px;align-items:center}
+.r2,.r3{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.r2{padding:5px 8px;background:#f7f9fc;border:1px solid var(--line2);border-radius:7px}
+.r2 label,.r3 label{font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.r3{padding:6px 8px;background:#f7f9fc;border:1px dashed #d6dfe9;border-radius:7px}
+.r3 label{font-weight:700;color:var(--ink2)}
+.dot{color:#c3cede;font-weight:800;font-size:12px;padding:0 2px}
+.i.s3{font-size:12.5px;padding:4px 7px}
+.i.obj{flex:2 1 200px;min-width:120px}
+.i.ifc{flex:1 1 130px;min-width:100px}
+.ar{color:#aebccb;font-size:13px;font-weight:700}
+.i.t{flex:1;font-weight:600}
+.i.n{width:64px;text-align:right}
+.i.n2{width:52px;text-align:right;padding:5px 6px}
+.i.q{width:74px;text-align:right;padding:5px 6px}   /* 件數可能上千，要比其他數字欄寬 */
+/* 關掉數字欄的上下微調箭頭 —— 滑鼠移上去時它會蓋住靠右對齊的數字 */
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.fx{font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.i.s{width:92px}
+/* 補充說明：多行，隨內容自己長高，不出捲軸 */
+textarea.i.d{font-size:12.5px;color:var(--ink2);line-height:1.55;min-height:32px;
+  resize:vertical;overflow:hidden;display:block}
+.calc{margin-left:auto;font-size:12px;color:var(--ink2);background:#f1f4f8;border:1px solid var(--line);
+  padding:3px 9px;border-radius:6px;white-space:nowrap;flex:none}
+.calc b{color:var(--ink);font-size:13px}
+.calc.hot{background:var(--warn-soft);border-color:#f5cdc8;color:var(--warn)}
+.calc.hot b{color:var(--warn)}
+.calc.na{background:#fafbfc;border-style:dashed;color:var(--ink3)}
+.tagsel,.actsel{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;border:1px solid transparent;
+  cursor:pointer;appearance:none;-webkit-appearance:none;text-align:center;flex:none}
+.actsel{background:#fff;border-color:var(--line);padding:3px 8px}
+.k-manual{background:var(--manual-soft);color:var(--manual);border-color:#f2d7bd}
+.k-system{background:var(--system-soft);color:var(--system);border-color:#c8ddf5}
+.k-ai{background:var(--ai-soft);color:var(--ai);border-color:#bde5d3}
+.a-exec{color:var(--a-exec)}
+.a-judge{color:var(--a-judge);border-color:#ddd0f0}
+.a-review{color:var(--a-review);border-color:#f0cfdd}
+.a-wait{color:var(--a-wait)}
+.a-maint{color:var(--a-maint);border-color:#eddda8;background:var(--amber-soft)}
+.cm .tg{font-size:11px;font-weight:700;padding:0 7px;border-radius:99px;border:1px solid transparent}
+.cm .tg2{font-size:11px;font-weight:700;padding:0 7px;border-radius:99px;border:1px solid var(--line);background:#fff}
+.fieldhelp{display:flex;gap:16px;flex-wrap:wrap;padding:9px 16px;background:#f7f9fc;
+  border-bottom:1px solid var(--line2);font-size:11.5px;color:var(--ink3)}
+.fieldhelp b{color:var(--ink2);font-weight:700}
+.addrow{width:100%;padding:12px;border:1.5px dashed #cdd8e4;background:none;border-radius:9px;
+  color:var(--ink3);font-size:13.5px;font-weight:700;cursor:pointer}
+.addrow:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.empty-hint{padding:34px 20px;text-align:center;color:var(--ink3);font-size:13px;line-height:1.8}
+
+/* 兩版對照 */
+.cstat{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 16px 0;flex-wrap:wrap}
+.cstat>div{flex:1;min-width:150px;padding:13px 15px;border-left:1px solid var(--line)}
+.cstat>div:first-child{border-left:0}
+.cstat .l{font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.05em}
+.cstat .n{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.cstat .n small{font-size:12.5px;font-weight:600;color:var(--ink2)}
+.cstat .s{font-size:11.5px;color:var(--ink3)}
+/* 兩層分類拆出來的三個數字 */
+.c3{display:flex;gap:10px;flex-wrap:wrap;margin:11px 16px 0}
+.c3>div{flex:1;min-width:170px;padding:10px 13px;border-radius:9px;border:1px solid var(--line);background:#fafbfd}
+.c3 .l{font-size:11.5px;color:var(--ink3);font-weight:700}
+.c3 .n{font-size:18px;font-weight:800;letter-spacing:-.01em;line-height:1.3}
+.c3 .n small{font-size:11.5px;font-weight:600;color:var(--ink3)}
+.c3 .s{font-size:11px;color:var(--ink3);line-height:1.45}
+.cmp2{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:14px 16px 18px}
+.chh{display:flex;align-items:baseline;gap:8px;padding:8px 12px;border-radius:8px;margin-bottom:10px;font-size:13px;font-weight:700}
+.chh.a{background:#e7ebf1}
+.chh.b{background:var(--ai-soft);color:#12684a}
+.chh .c{font-weight:400;font-size:11.5px;color:var(--ink3)}
+.chh .t{margin-left:auto;font-size:12.5px}
+.cnode{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:9px;
+  padding:9px 11px;margin-bottom:7px;background:#fff;cursor:pointer}
+.cnode:hover{border-color:#cdd8e4;box-shadow:0 1px 4px rgba(20,32,45,.07)}
+.cnode.b{border-color:#c6e6d6;background:#fbfefc}
+.cnode.bad{border-color:#eec98a;background:#fffcf3}
+.cnode .ci2{width:19px;height:19px;border-radius:5px;background:var(--ink);color:#fff;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px}
+.cnode.b .ci2{background:var(--ai)}
+.cb{flex:1;min-width:0}
+.ct{font-size:13px;font-weight:700;line-height:1.35}
+.cm{font-size:11.5px;color:var(--ink3);margin-top:2px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.cm .p{background:#f1f4f8;border:1px solid var(--line);padding:0 7px;border-radius:99px;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm .p.miss{background:var(--amber-soft);border-color:#eddda8;color:var(--amber);font-weight:700}
+.cv{flex:none;text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;padding-top:1px}
+.cv small{display:block;font-size:10px;font-weight:600;color:var(--ink3)}
+.cnode.b .cv{color:var(--ai)}
+.cnode.bad .cv{color:var(--amber)}
+.cempty{padding:24px;text-align:center;color:var(--ink3);border:1.5px dashed var(--line);border-radius:9px;font-size:12.5px}
+.ctrack{height:4px;background:#eef2f6;border-radius:99px;overflow:hidden;margin-top:5px}
+.ctrack i{display:block;height:100%;border-radius:99px;min-width:2px}
+
+/* 側欄 */
+.side{position:sticky;top:118px;display:flex;flex-direction:column;gap:13px}
+.kpi{padding:15px 16px}
+.krow{display:flex;align-items:center;gap:10px}
+.kpi .lab{font-size:11.5px;color:var(--ink3);letter-spacing:.05em;font-weight:700;margin-right:auto}
+.kpi .big{font-size:29px;font-weight:800;letter-spacing:-.02em;margin:1px 0 0;line-height:1.15}
+.kpi .big span{font-size:13.5px;font-weight:600;color:var(--ink2);margin-left:3px}
+.kpi .sub{font-size:12px;color:var(--ink3);margin-top:2px}
+.cmpbox{margin-top:12px;padding-top:11px;border-top:1px solid var(--line2);display:flex;gap:10px;align-items:baseline}
+.cmpbox .x{font-size:12px;color:var(--ink3)}
+.cmpbox .y{font-size:17px;font-weight:800;margin-left:auto}
+.bars{margin-top:12px;padding-top:11px;border-top:1px solid var(--line2)}
+.bar{margin-bottom:8px}
+.bar .bl{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:3px}
+.bar .bl span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .bl span:last-child{color:var(--ink3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.track{height:6px;background:#eef2f6;border-radius:99px;overflow:hidden}
+.fill{height:100%;border-radius:99px;min-width:2px}
+.chk{padding:14px 16px}
+.chk h4{font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.chk h4 em{font-style:normal;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px}
+.ci{display:flex;gap:8px;font-size:12.5px;padding:6px 0;align-items:flex-start;border-top:1px solid var(--line2);cursor:default}
+.ci:first-of-type{border-top:0}
+.ci .ic{flex:none;width:15px;text-align:center;font-weight:800}
+.ci.ok .ic{color:var(--ai)}.ci.ng .ic{color:var(--warn)}.ci.wr .ic{color:var(--amber)}
+.ci.ng{color:var(--warn)}.ci.wr{color:#8a6a11}
+.ci small{display:block;font-size:11px;color:var(--ink3);font-weight:400}
+.btn{width:100%;padding:12px;border-radius:9px;border:1px solid var(--brand);background:var(--brand);color:#fff;
+  font-size:14px;font-weight:700;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.btn.ghost{background:#fff;color:var(--brand)}
+.note{background:var(--brand-soft);border-left:3px solid var(--brand);padding:11px 14px;border-radius:0 8px 8px 0;
+  font-size:12.5px;color:#2b4270;line-height:1.6}
+.note b{color:var(--brand)}
+.note.amber{background:var(--amber-soft);border-color:var(--amber);color:#7a5c00}
+.note.amber b{color:#5c4500}
+
+/* 提示條 */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);background:#16202b;color:#fff;
+  padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;
+  transition:.22s;z-index:60;box-shadow:0 8px 26px rgba(15,22,32,.3);max-width:80vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.bad{background:var(--warn)}
+.lb{position:fixed;inset:0;background:rgba(15,22,32,.85);display:none;align-items:center;justify-content:center;z-index:70;padding:36px}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:100%;border-radius:8px}
+.lb .x{position:absolute;top:18px;right:26px;color:#fff;font-size:32px;cursor:pointer;opacity:.75;line-height:1}
+.pasting{position:fixed;inset:0;background:rgba(15,22,32,.5);display:none;align-items:center;justify-content:center;z-index:80;color:#fff;font-size:15px;font-weight:700}
+.pasting.on{display:flex}
+@media(max-width:1060px){.grid{grid-template-columns:1fr}.side{position:static}}
+@media(max-width:900px){.cmp2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <div class="tline">
+      <h1>SOP 工時盤點填表器</h1>
+      <span id="saveState" style="font-size:12px;color:#8fa6c4"></span>
+      <div class="tools">
+        <button class="tb" id="btnImport">開啟既有檔案</button>
+        <button class="tb" id="btnSample">載入範例</button>
+        <button class="tb" id="btnClear">全部清空</button>
+        <button class="tb go" id="btnExportTop">匯出交件檔</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-p="pNow">現況流程<b id="cNow">0</b></button>
+      <button class="tab" data-p="pAft">AI 導入後<b id="cAft">0</b></button>
+      <button class="tab" data-p="pCmp">兩版對照</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+    <div>
+      <!-- 基本資料 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="chead"><div><h3>基本資料</h3><div class="sub">這幾欄決定工時能不能換算，請務必填完</div></div></div>
+        <div class="meta">
+          <div class="fld"><label>部門 <span style="color:var(--warn)">*</span></label>
+            <input class="i" id="mDept" placeholder="例：品質保證部"></div>
+          <div class="fld"><label>流程題目 <span style="color:var(--warn)">*</span></label>
+            <input class="i" id="mTitle" placeholder="例：供應商自主檢驗表異常稽核與退件通知"></div>
+          <div class="fld"><label>填表人</label><input class="i" id="mAuthor" placeholder="姓名"></div>
+          <div class="fld"><label>處理量
+            <span class="hint">這條流程一個月吃多少量；也是新步驟「共 N 件」的預設值</span></label>
+            <div class="vol">
+              <input class="i" id="mVol" type="number" min="0" step="1" placeholder="176">
+              <span class="fx">件 / 每</span>
+              <input class="i n2" id="mVolEvery" type="number" min="1" step="1" value="1">
+              <select class="i" id="mVolPer" style="width:74px"></select>
+            </div></div>
+        </div>
+      </div>
+
+      <!-- 現況 -->
+      <div class="pane on" id="pNow">
+        <div class="card">
+          <div class="chead"><div><h3>現況流程</h3><div class="sub">現在實際怎麼做，一步一步填</div></div>
+            <div style="font-size:12px;color:var(--ink3)">點步驟後可直接 <b>Ctrl+V</b> 貼上截圖</div></div>
+          <div class="fieldhelp">
+            <span><b>誰出力</b> 沒有人坐在電腦前，這步會自己跑完嗎？不會＝人工，會＝系統或 AI</span>
+            <span><b>在做什麼</b> 判斷＝決定走哪條路；審核＝把關放行；維護＝為了讓流程能繼續跑（優先於其他）</span>
+          </div>
+          <div class="fieldhelp">
+            <span><b>每 N 件／日／週</b> 多久做一次</span>
+            <span><b>時間</b> 做一次要多久</span>
+            <span><b>人數</b> 同時要幾個人</span>
+            <span><b>檔案／任務</b> 在處理什麼東西（例：A-1024 機種零件清單）</span>
+            <span><b>介面</b> 在哪裡做（例：Excel、網頁、系統程式）</span>
+          </div>
+          <div class="steps" id="listNow"></div>
+          <div style="padding:0 10px 14px"><button class="addrow" data-add="now">＋ 新增步驟</button></div>
+        </div>
+      </div>
+
+      <!-- AI 後 -->
+      <div class="pane aft" id="pAft">
+        <div class="card">
+          <div class="chead"><div><h3>AI 導入後流程</h3>
+            <div class="sub">未來怎麼做，一樣一步一步填 —— 兩條流程各自獨立，不必對應</div></div></div>
+          <div class="fieldhelp">
+            <span><b>誰出力</b> 沒有人坐在電腦前，這步會自己跑完嗎？不會＝人工，會＝系統或 AI</span>
+            <span><b>在做什麼</b> 判斷＝決定走哪條路；審核＝把關放行；維護＝為了讓流程能繼續跑（優先於其他）</span>
+          </div>
+          <div class="fieldhelp">
+            <span><b>每 N 件／日／週</b> 多久做一次</span>
+            <span><b>時間</b> 做一次要多久</span>
+            <span><b>人數</b> 同時要幾個人</span>
+            <span><b>檔案／任務</b> 在處理什麼東西（例：A-1024 機種零件清單）</span>
+            <span><b>介面</b> 在哪裡做（例：Excel、網頁、系統程式）</span>
+          </div>
+          <div class="steps" id="listAft"></div>
+          <div style="padding:0 10px 14px"><button class="addrow" data-add="aft">＋ 新增步驟</button></div>
+          <div style="padding:0 14px 16px"><div class="note amber">
+            <b>導入後才多出來的工作，也請填進來。</b>
+            例如「每週維護判定規則」「例外案件人工處理」「AI 結果抽查」。
+            漏填會讓效益高估，主管一問就破功；填了，數字才站得住腳。
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 兩版對照 -->
+      <div class="pane" id="pCmp">
+        <div class="card">
+          <div class="chead"><div><h3>兩版對照</h3>
+            <div class="sub">匯出前在這裡檢查：兩邊步驟對不對、工時合不合理、有沒有算不出來的</div></div>
+            <div class="seg" id="segCmp"></div></div>
+          <div class="cstat" id="cmpStat"></div>
+          <div class="c3" id="cmp3"></div>
+          <div class="cmp2">
+            <div>
+              <div class="chh a">現況流程<span class="c" id="cmpCn"></span><span class="t" id="cmpTn"></span></div>
+              <div id="cmpColA"></div>
+            </div>
+            <div>
+              <div class="chh b">AI 導入後<span class="c" id="cmpCa"></span><span class="t" id="cmpTa"></span></div>
+              <div id="cmpColB"></div>
+            </div>
+          </div>
+          <div style="padding:0 16px 16px"><div class="note">
+            兩欄的長條使用<b>同一把比例尺</b>，長度可以直接互相比較。
+            點任何一步可以跳回去修改。黃色底的步驟代表<b>資料還算不出工時</b>。
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 側欄 -->
+    <div class="side">
+      <div class="card kpi">
+        <div class="krow">
+          <div class="lab" id="kLab">現況工時</div>
+          <div class="seg" id="segSide"></div>
+        </div>
+        <div class="big" id="kBig">—</div>
+        <div class="sub" id="kSub">請先填基本資料</div>
+        <div class="cmpbox" id="kCmp" style="display:none"></div>
+        <div class="bars" id="kBars"></div>
+      </div>
+      <div class="card chk">
+        <h4>交件檢查 <em id="chkBadge"></em></h4>
+        <div id="chkList"></div>
+      </div>
+      <button class="btn" id="btnExport">匯出交件檔</button>
+      <button class="btn ghost" id="btnPreview">預覽成品</button>
+      <div class="note">草稿會自動存在這台電腦的瀏覽器裡，關掉再開會接續。
+        <b>但換電腦不會跟著走</b> —— 填完請務必按「匯出交件檔」保存。</div>
+    </div>
+  </div>
+</div>
+
+<datalist id="ifaceList"></datalist>
+<input type="file" id="filePick" accept="image/*" style="display:none">
+<input type="file" id="htmlPick" accept=".html,text/html" style="display:none">
+<div class="lb" id="lb"><span class="x">×</span><img id="lbImg" alt=""></div>
+<div class="pasting" id="busy">處理圖片中…</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG ── 要調整選項或換算基準，直接改這一段就好
+   ══════════════════════════════════════════════════════════════ */
+const CFG = {
+  /* 步驟分類分兩層，兩層各自獨立、互不覆蓋。
+     第一層｜誰出力：判準是「沒有人坐在電腦前，這步會不會自己跑完」。
+       不會＝人工（人在 TIPTOP 一筆一筆查也算人工，因為人不動它就不會發生）；
+       會＝系統（排程／公式，既有自動化）或 AI。
+       只有「人工」的工時才是要省的成本，這一層決定顏色與長條。
+     第二層｜在做什麼：判斷＝決定接下來走哪條路；審核＝決定能不能放行；
+       維護＝為了讓流程本身能繼續跑（改規則、更新對照表、修錯），優先於其他四項；
+       執行是沒得歸類時的預設。
+     要增減選項改這兩段，顏色在 :root 與 .k-xxx／.a-xxx 對應。 */
+  kinds: [
+    {v:'manual', l:'人工'},
+    {v:'system', l:'系統'},
+    {v:'ai',     l:'AI'}
+  ],
+  acts: [
+    {v:'exec',   l:'執行'},
+    {v:'judge',  l:'判斷'},
+    {v:'review', l:'審核'},
+    {v:'wait',   l:'等待'},
+    {v:'maint',  l:'維護'}
+  ],
+  /* 「介面」欄的建議清單。這是提示不是限制 —— 使用者可以自己打任何字。
+     要增減建議值改這一行就好，舊檔案不會受影響。 */
+  ifaces: ['Excel','網頁','系統程式','TIPTOP','QMS','Outlook / 信件','Word / PDF',
+           'PowerPoint','紙本 / 列印','共用資料夾','會議 / 口頭','電話','AI 工具','LINE / 通訊軟體'],
+  /* 換算基準：一個月的工作日數與週數。公司若採用不同基準，改這裡 */
+  daysPerMonth: 20.8,
+  weeksPerMonth: 4.33,
+  /* 圖片壓縮：縮圖給版面用、原圖給點擊放大用 */
+  thumbMax: 480, thumbQ: 0.72,
+  fullMax : 1280, fullQ : 0.78
+};
+/* ══════════════════════════════════════════════════════════════ */
+
+const D=CFG.daysPerMonth, W=CFG.weeksPerMonth;
+const PERIODS=[
+  {v:'day',   l:'日', pm:D},
+  {v:'week',  l:'週', pm:W},
+  {v:'month', l:'月', pm:1},
+  {v:'quarter',l:'季',pm:1/3},
+  {v:'year',  l:'年', pm:1/12}
+];
+/* 這一輪多久發生一次。件數已經在步驟自己的「共 N 件」裡，
+   所以這裡只剩時間單位；不定期＝算不出頻率，不計入工時 */
+const FREQS=PERIODS.map(p=>({v:p.v,l:p.l})).concat([{v:'none',l:'不定期（不計入）'}]);
+const UNITS=[{v:'sec',l:'秒',s:1},{v:'min',l:'分鐘',s:60},{v:'hr',l:'小時',s:3600}];
+const KL=Object.fromEntries(CFG.kinds.map(k=>[k.v,k.l]));   // 第一層標籤
+const AL=Object.fromEntries(CFG.acts.map(a=>[a.v,a.l]));    // 第二層標籤
+const KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
+const PM=Object.fromEntries(PERIODS.map(p=>[p.v,p.pm]));
+/* 顯示單位：預設用「平均每日」，因為每日的數字最有體感 */
+const SHOWS=[{v:'day',l:'每日',d:D,u:'人時/日'},
+             {v:'week',l:'每週',d:W,u:'人時/週'},
+             {v:'month',l:'每月',d:1,u:'人時/月'}];
+const SCHEMA='sop-timesheet/3';
+const SCHEMAS_OLD=['sop-timesheet/2','sop-timesheet/1'];
+const DRAFT='sopEditorDraft/3';
+const DRAFTS_OLD=['sopEditorDraft/2','sopEditorDraft/1'];
+
+/* ── 狀態 ── */
+let S=blank(), active=null, activeList=null, dirty=false, saveFailed=false;
+function blank(){
+  return {schema:SCHEMA, dept:'', title:'', author:'',
+          volume:null, volEvery:1, volumePer:'day',   // 處理量：N 件 / 每 M 個單位
+          showUnit:'day',                             // 畫面上工時用什麼單位顯示
+          now:[], aft:[], updatedAt:null};
+}
+/* 新步驟的預設值：第一層在現況頁給「人工」、AI 導入後頁給「AI」；
+   件數與週期沿用基本資料的處理量，多數步驟開出來就不用改 */
+function newStep(list){
+  const v=Number(S&&S.volume)>0?Number(S.volume):1;
+  return {id:'s'+Math.random().toString(36).slice(2,9),
+          kind:list==='aft'?'ai':'manual', act:'exec', title:'', desc:'',
+          dur:null, unit:'min',                        // 每一件要花多久
+          qty:v,                                       // 這一輪共幾件
+          hc:1,                                        // 幾個人處理
+          every:(S&&Number(S.volEvery)>0?Number(S.volEvery):1),
+          freq:(S&&PM[S.volumePer]?S.volumePer:'day'), // 每 every 個 freq 一輪
+          obj:'', iface:'',                            // 檔案／任務、在哪個介面做
+          thumb:null, full:null};
+}
+/* 舊檔案轉新格式。用「欄位在不在」判斷是哪一代，不靠 schema 字串，
+   這樣中途存過的草稿也接得回來。三代累積下來要處理的東西：
+   ─ v1：每 N 單位做 M 次 → 每 (N/M) 單位做一次（數學等價）；
+         資料流三欄只留得下「介面」，來源／產出併進補充說明，免得資料憑空消失
+   ─ v2：單層分類 → 兩層。舊的「系統操作」指的是人在系統上操作，所以歸「人工」
+   ─ v3：頻率的「每 N 件／批次」靠基本資料的處理量換算 → 改成步驟自己帶「共 N 件」 */
+const OLD_KIND={manual:['manual','exec'], system:['manual','exec'],
+                wait:['manual','wait'], decide:['manual','judge'], ai:['ai','exec']};
+function migStep(o,d){
+  const st=Object.assign(newStep(),o);
+  // 舊資料沒有的欄位一律回到中性值，不要沾到 newStep 從當下處理量拿到的預設
+  if(!('qty'   in o)) st.qty=1;
+  if(!('every' in o)) st.every=1;
+  if(!('freq'  in o)) st.freq='day';
+
+  if('times' in o){                                    // ── v1
+    const n=Number(o.every)>0?Number(o.every):1, t=Number(o.times)>0?Number(o.times):1;
+    st.every=n/t;
+    if(!st.iface&&o.sys) st.iface=(o.sys==='其他'?(o.sysOther||'其他'):o.sys);
+    if(!st.obj){
+      const p=(v,x)=>!v?'':(v==='其他'?(x||'其他'):v);
+      const src=p(o.src,o.srcOther), out=p(o.out,o.outOther);
+      const legacy=[src&&('來源：'+src), out&&('產出：'+out)].filter(Boolean).join('　');
+      if(legacy) st.desc=(st.desc?st.desc+'　':'')+'（舊版資料流 '+legacy+'）';
+    }
+  }
+  if(!('act' in o)){                                   // ── v2：單層分類
+    const m=OLD_KIND[o.kind]||['manual','exec'];
+    st.kind=m[0]; st.act=m[1];
+  }
+  if(o.freq==='item'||o.freq==='batch'){               // ── v3：頻率吃處理量
+    const vEvery=Number(d&&d.volEvery)>0?Number(d.volEvery):1;
+    const vPer=(d&&PM[d.volumePer])?d.volumePer:'day';
+    const n=Number(o.every)>0?Number(o.every):1;
+    if(o.freq==='item'){ st.qty=(Number(d&&d.volume)>0?Number(d.volume):1)/n; st.every=vEvery; }
+    else               { st.qty=1; st.every=vEvery*n; }
+    st.freq=vPer;
+  }
+  if(!KL[st.kind]) st.kind='manual';
+  if(!AL[st.act])  st.act='exec';
+  if(!PM[st.freq]&&st.freq!=='none') st.freq='day';
+  ['times','src','srcOther','sys','sysOther','out','outOther'].forEach(k=>delete st[k]);
+  return st;
+}
+function adopt(d){
+  const o=Object.assign(blank(),d);
+  o.now=(d.now||[]).map(x=>migStep(x,d));
+  o.aft=(d.aft||[]).map(x=>migStep(x,d));
+  if(!SHOWS.some(s=>s.v===o.showUnit)) o.showUnit='day';
+  o.schema=SCHEMA;
+  return o;
+}
+
+/* ── 工時引擎 ──
+   一句話讀完一個步驟：每件 dur unit，共 qty 件，每 every freq 一次，hc 人處理。
+     一輪要花的秒數 = 每件秒數 × 件數 × 人數
+     一個月做幾輪   = 該週期的月次數 ÷ every（不定期 = 0，不計入）
+     月人時         = 一輪秒數 × 月輪數 ÷ 3600
+   畫面上再依「顯示單位」除以每月工作日數／週數                        */
+function every(st){ const n=Number(st.every); return n>0?n:1; }
+function occ(st){ return st.freq==='none'?0:PM[st.freq]/every(st); }
+function secs(st){
+  if(st.dur==null||st.dur==='') return null;
+  const u=UNITS.find(x=>x.v===st.unit)||UNITS[1];
+  return Number(st.dur)*u.s;
+}
+function qty(st){                                 // 沒填＝算不出來；填 0 是合法的（等於這輪不做）
+  if(st.qty==null||st.qty==='') return null;
+  const n=Number(st.qty); return n>=0?n:null;
+}
+function mh(st){                                  // 月人時；null 表示資料不足
+  const s=secs(st), q=qty(st);
+  if(s==null||q==null) return null;
+  return s*q*(Number(st.hc)||0)*occ(st)/3600;
+}
+function sum(list){
+  let t=0, complete=true;
+  list.forEach(st=>{const m=mh(st); if(m==null) complete=false; else t+=m;});
+  return {total:t, complete};
+}
+/* 顯示單位換算 */
+function U(){ return SHOWS.find(s=>s.v===S.showUnit)||SHOWS[0]; }
+const cv=m=>m==null?null:m/U().d;
+const fmt=n=>n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
+            :(n>0&&n<0.01?'<0.01':n.toFixed(2));
+
+/* ── 圖片：壓縮成縮圖 + 原圖 ── */
+function fitTo(img,max){
+  let{width:w,height:h}=img;
+  if(w>max||h>max){const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r);}
+  return[w,h];
+}
+function draw(img,max,q){
+  const[w,h]=fitTo(img,max), c=document.createElement('canvas');
+  c.width=w; c.height=h;
+  const x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,w,h);          // 去掉 PNG 透明底，避免變黑
+  x.drawImage(img,0,0,w,h);
+  return c.toDataURL('image/jpeg',q);
+}
+function loadImage(blob){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=fr.result;};
+    fr.onerror=rej; fr.readAsDataURL(blob);
+  });
+}
+async function attach(list,id,blob){
+  if(!blob||!/^image\//.test(blob.type)) return toast('這不是圖片檔',true);
+  busy(true);
+  try{
+    const im=await loadImage(blob);
+    const st=S[list].find(x=>x.id===id); if(!st) return;
+    st.thumb=draw(im,CFG.thumbMax,CFG.thumbQ);
+    st.full =draw(im,CFG.fullMax ,CFG.fullQ );
+    mark(); render();
+    toast('已加入截圖');
+  }catch(e){ toast('圖片讀取失敗',true); }
+  finally{ busy(false); }
+}
+
+/* ── 渲染 ── */
+const opt=(arr,sel,vk='v',lk='l')=>arr.map(o=>
+  `<option value="${o[vk]}"${o[vk]===sel?' selected':''}>${o[lk]}</option>`).join('');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const calcHTML=(m,hot)=>m==null?'<span class="calc na">工時待補</span>'
+  :`<span class="calc${hot?' hot':''}">≈ <b>${fmt(cv(m))}</b> ${U().u}</span>`;
+const rowWarn=st=>!String(st.title||'').trim()||mh(st)==null;
+/* 補充說明的框跟著內容長高。先歸零再量 scrollHeight，否則縮不回去 */
+function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
+const growAll=root=>(root||document).querySelectorAll('textarea.d').forEach(autoGrow);
+
+function stepHTML(st,i,list,arr,peak){
+  const m=mh(st), hot=m!=null&&m===peak&&m>0, off=st.freq==='none';
+  return `<div class="step${rowWarn(st)?' warnrow':''}${active===st.id?' act':''}" data-id="${st.id}" data-list="${list}">
+    <div class="ord">
+      <div class="n" data-drag="1" title="按住拖曳可調整順序">${i+1}</div>
+    </div>
+    <div class="thumb${st.thumb?'':' empty'}" data-thumb="1">
+      ${st.thumb?`<img src="${st.thumb}" alt=""><button class="rm" data-rmimg="1" title="移除圖片">×</button>`
+                :'點擊選檔<br>或 Ctrl+V<br>或拖曳圖片'}
+    </div>
+    <div class="f">
+      <div class="r1">
+        <select class="tagsel k-${st.kind}" data-k="kind" title="誰出力：沒有人坐在電腦前，這步會自己跑完嗎？">${opt(CFG.kinds,st.kind)}</select>
+        <select class="actsel a-${st.act}" data-k="act" title="在做什麼">${opt(CFG.acts,st.act)}</select>
+        <input class="i t" data-k="title" value="${esc(st.title)}" placeholder="步驟名稱，例：以料號於 TIPTOP 查廠商">
+        ${calcHTML(m,hot)}
+        <button class="xbtn" data-del="1" title="刪除這個步驟">✕</button>
+      </div>
+      <div class="r2">
+        <span class="fx">每件</span>
+        <input class="i n" data-k="dur" type="number" min="0" step="any" value="${st.dur??''}" placeholder="0" title="一件要花多久">
+        <select class="i s" data-k="unit" style="width:74px">${opt(UNITS,st.unit)}</select>
+        <span class="dot">，</span>
+        <span class="fx">共</span>
+        <input class="i q" data-k="qty" type="number" min="0" step="any" value="${st.qty??''}" title="這一輪要處理幾件；不是逐件的工作就填 1">
+        <span class="fx">件</span>
+        <span class="dot">，</span>
+        ${off?'':'<span class="fx">每</span>'}
+        ${off?'':`<input class="i n2" data-k="every" type="number" min="0" step="any" value="${st.every??1}" title="可填小數，例如每 0.5 月＝一個月兩次">`}
+        <select class="i s" data-k="freq" style="width:${off?'126px':'62px'}">${opt(FREQS,st.freq)}</select>
+        ${off?'':'<span class="fx">一次</span>'}
+        <span class="dot">，</span>
+        <input class="i n2" data-k="hc" type="number" min="0" step="1" value="${st.hc??''}" title="同時要幾個人">
+        <span class="fx">人處理</span>
+      </div>
+      <div class="r3">
+        <label title="這一步在處理哪一份檔案或哪一件任務">檔案／任務</label>
+        <input class="i s3 obj" data-k="obj" value="${esc(st.obj)}"
+               placeholder="例：A-1024 機種零件清單、YouTube 影片評論、訂貨單廠商資料">
+        <span class="ar">→</span>
+        <label title="這一步在哪個工具或系統上操作">介面</label>
+        <input class="i s3 ifc" data-k="iface" list="ifaceList" value="${esc(st.iface)}"
+               placeholder="例：Excel、網頁、系統程式">
+      </div>
+      <textarea class="i d" data-k="desc" rows="1" placeholder="補充說明（選填，可換行）">${esc(st.desc)}</textarea>
+    </div></div>`;
+}
+
+/* 只更新工時數字，不重建 DOM ── 避免打字時游標跳掉 */
+function refreshCalc(list){
+  const arr=S[list];
+  const vals=arr.map(mh).filter(v=>v!=null), peak=vals.length?Math.max(...vals):0;
+  arr.forEach(st=>{
+    const row=document.querySelector(`.step[data-list="${list}"][data-id="${st.id}"]`);
+    if(!row) return;
+    const m=mh(st), hot=m!=null&&m===peak&&m>0;
+    const c=row.querySelector('.calc');
+    if(c) c.outerHTML=calcHTML(m,hot);
+    row.classList.toggle('warnrow',rowWarn(st));
+  });
+}
+
+function renderList(list){
+  const arr=S[list], el=document.getElementById(list==='now'?'listNow':'listAft');
+  if(!arr.length){
+    el.innerHTML=`<div class="empty-hint">還沒有任何步驟。<br>按下方「＋ 新增步驟」開始，或先按右上角「載入範例」看看長什麼樣。</div>`;
+    return;
+  }
+  const vals=arr.map(mh).filter(v=>v!=null), peak=vals.length?Math.max(...vals):0;
+  el.innerHTML=arr.map((st,i)=>stepHTML(st,i,list,arr,peak)).join('');
+  growAll(el);
+}
+
+/* ── 兩版對照 ── */
+function curTab(){
+  const p=document.querySelector('.tab.on').dataset.p;
+  return p==='pAft'?'aft':p==='pCmp'?'cmp':'now';
+}
+function cmpNode(st,i,list,gmax){
+  const m=mh(st), na=m==null;
+  const w=(!na&&gmax>0)?Math.max(m/gmax*100,m>0?1:0):0;
+  const isAft=list==='aft';
+  /* 對照頁只留四樣：步驟名稱、分類、作業時間、檔案／任務。
+     其餘細節（介面、頻率、人數、補充說明）留在編輯分頁看就好 */
+  const meta=[
+    `<span class="tg k-${st.kind}">${esc(KL[st.kind]||'')}</span>`,
+    `<span class="tg2 a-${st.act}">${esc(AL[st.act]||'')}</span>`,
+    st.obj?`<span class="p">${esc(st.obj)}</span>`:'<span class="p miss">未填檔案／任務</span>'
+  ].join('');
+  return `<div class="cnode${isAft?' b':''}${na?' bad':''}" data-jump="${list}" data-jid="${st.id}">
+    <div class="ci2">${i+1}</div>
+    <div class="cb">
+      <div class="ct">${esc(st.title||'（未命名）')}</div>
+      <div class="cm">${meta}</div>
+      <div class="ctrack"><i style="width:${w}%;background:${na?'var(--amber)':(KC[st.kind]||'var(--now)')}"></i></div>
+    </div>
+    <div class="cv">${na?'⚠':fmt(cv(m))}<small>${na?'算不出':U().u}</small></div>
+  </div>`;
+}
+function renderCmp(){
+  const rn=sum(S.now), ra=sum(S.aft), u=U();
+  const all=[...S.now,...S.aft].map(mh).filter(v=>v!=null);
+  const gmax=all.length?Math.max(...all):0;
+  const pct=rn.total>0?(rn.total-ra.total)/rn.total*100:null;
+  const bothReady=S.now.length&&S.aft.length;
+
+  document.getElementById('cmpStat').innerHTML=
+   `<div><div class="l">現況</div><div class="n">${fmt(cv(rn.total))} <small>${u.u}</small></div>
+      <div class="s">${S.now.length} 步${rn.complete?'':' · 含算不出來的步驟'}</div></div>
+    <div><div class="l">AI 導入後</div><div class="n" style="color:var(--ai)">${fmt(cv(ra.total))} <small>${u.u}</small></div>
+      <div class="s">${S.aft.length} 步${ra.complete?'':' · 含算不出來的步驟'}</div></div>
+    <div><div class="l">淨改善</div><div class="n" style="color:${pct==null?'var(--ink3)':pct>=0?'var(--warn)':'var(--ink)'}">${
+      pct==null?'—':(pct>=0?'↓ ':'↑ ')+Math.abs(pct).toFixed(1)+'<small>%</small>'}</div>
+      <div class="s">${pct==null||!bothReady?'兩版都填了才算得出來'
+        :(pct>=0?'省下 ':'多出 ')+fmt(Math.abs(cv(rn.total-ra.total)))+' '+u.u}</div></div>`;
+
+  /* 兩層分類拆出來的三個數字：這是分兩層唯一的理由，沒有它就只是多點一次滑鼠 */
+  const tot=(arr,f)=>arr.filter(f).reduce((t,st)=>{const m=mh(st); return t+(m==null?0:m);},0);
+  const auto  =tot(S.now,st=>st.kind==='manual'&&st.act==='exec');
+  const keep  =tot(S.now,st=>st.kind==='manual'&&(st.act==='judge'||st.act==='review'));
+  const upkeep=tot(S.aft,st=>st.act==='maint');
+  document.getElementById('cmp3').innerHTML=
+   `<div><div class="l">最該自動化</div><div class="n">${fmt(cv(auto))} <small>${u.u}</small></div>
+      <div class="s">現況裡「人工 · 執行」的工時</div></div>
+    <div><div class="l">導入後多半要保留</div><div class="n">${fmt(cv(keep))} <small>${u.u}</small></div>
+      <div class="s">現況裡「人工 · 判斷／審核」的工時</div></div>
+    <div><div class="l">效益要扣掉</div><div class="n" style="color:var(--a-maint)">${fmt(cv(upkeep))} <small>${u.u}</small></div>
+      <div class="s">導入後「維護」的工時${upkeep>0?'':'　·　一步都沒填，效益可能高估'}</div></div>`;
+
+  const colA=document.getElementById('cmpColA'), colB=document.getElementById('cmpColB');
+  colA.innerHTML=S.now.length?S.now.map((st,i)=>cmpNode(st,i,'now',gmax)).join('')
+    :'<div class="cempty">現況流程尚未填寫</div>';
+  colB.innerHTML=S.aft.length?S.aft.map((st,i)=>cmpNode(st,i,'aft',gmax)).join('')
+    :'<div class="cempty">AI 導入後流程尚未填寫</div>';
+  document.getElementById('cmpCn').textContent=S.now.length+' 步';
+  document.getElementById('cmpCa').textContent=S.aft.length+' 步';
+  document.getElementById('cmpTn').textContent=fmt(cv(rn.total))+' '+u.u;
+  document.getElementById('cmpTa').innerHTML=`<span style="color:var(--ai)">${fmt(cv(ra.total))} ${u.u}</span>`;
+}
+
+function renderSide(){
+  const tab=curTab(), u=U();
+  const rn=sum(S.now), ra=sum(S.aft);
+  const which=tab==='aft'?'aft':'now';
+  const arr=S[which], r=which==='aft'?ra:rn;
+  const kLab=document.getElementById('kLab'), kBig=document.getElementById('kBig'), kSub=document.getElementById('kSub');
+
+  if(tab==='cmp'){
+    kLab.textContent='導入後可省下';
+    const save=rn.total-ra.total;
+    kBig.innerHTML=(S.now.length&&S.aft.length)?fmt(cv(save))+` <span>${u.u}</span>`:'—';
+    kSub.textContent=(S.now.length&&S.aft.length)
+      ? `現況 ${fmt(cv(rn.total))} → AI 後 ${fmt(cv(ra.total))} ${u.u}`
+      : '兩條流程都填了才算得出來';
+  }else{
+    kLab.textContent=which==='aft'?'AI 導入後工時':'現況工時';
+    kBig.innerHTML=arr.length?(r.total>0||r.complete?fmt(cv(r.total))+` <span>${u.u}</span>`:'—'):'—';
+    kSub.textContent=
+      !arr.length?'尚未填寫步驟':
+      !r.complete?'部分步驟資料不足，這是已填部分的小計':
+      `${arr.length} 步已全部換算　·　每月以 ${D} 個工作日、${W} 週計`;
+  }
+
+  const cmp=document.getElementById('kCmp');
+  if(tab!=='cmp'&&S.now.length&&S.aft.length&&rn.total>0){
+    const save=rn.total-ra.total, pct=(save/rn.total*100);
+    cmp.style.display='flex';
+    cmp.innerHTML=`<span class="x">現況 ${fmt(cv(rn.total))} → AI 後 ${fmt(cv(ra.total))}</span>
+      <span class="y" style="color:${save>0?'var(--ai)':'var(--warn)'}">${save>0?'↓':'↑'}${Math.abs(pct).toFixed(1)}%</span>`;
+  } else cmp.style.display='none';
+
+  const bArr=tab==='cmp'?S.now:arr, bTot=tab==='cmp'?rn.total:r.total;
+  const vals=bArr.map(mh).filter(v=>v!=null), peak=vals.length?Math.max(...vals):0;
+  document.getElementById('kBars').innerHTML=bArr.map((st,i)=>{
+    const m=mh(st), p=bTot>0&&m!=null?m/bTot*100:0, hot=m!=null&&m===peak&&m>0;
+    const c=hot?'var(--warn)':(KC[st.kind]||'var(--now)');
+    return `<div class="bar"><div class="bl">
+      <span>${i+1}. ${esc(st.title||'（未命名）')}</span>
+      <span>${m==null?'—':p.toFixed(0)+'%'}</span></div>
+      <div class="track"><i class="fill" style="width:${p}%;background:${c}"></i></div></div>`;
+  }).join('');
+
+  document.getElementById('cNow').textContent=S.now.length;
+  document.getElementById('cAft').textContent=S.aft.length;
+}
+
+/* ── 交件檢查 ── */
+function checks(){
+  const out=[], rn=sum(S.now), ra=sum(S.aft);
+  const push=(lv,t,s)=>out.push({lv,t,s});
+
+  S.dept&&S.title ? push('ok','基本資料已填寫','')
+                  : push('ng','部門與流程題目必填','面板要靠這兩欄辨識');
+  S.volume>0 ? push('ok','處理量已填寫','')
+             : push('wr','沒填處理量','工時改由各步驟自己的「共 N 件」換算，不填也能匯出；但主管看報表時會想知道這條流程一個月吃多少量');
+
+  S.now.length ? push('ok',`現況流程 ${S.now.length} 步`,'')
+               : push('ng','現況流程尚未填寫','');
+  S.aft.length ? push('ok',`AI 導入後流程 ${S.aft.length} 步`,'')
+               : push('ng','AI 導入後流程尚未填寫','沒有這一版就算不出效益');
+
+  const noTitle=[...S.now,...S.aft].filter(x=>!String(x.title||'').trim()).length;
+  if(noTitle) push('ng',`${noTitle} 個步驟沒有名稱`,'');
+
+  const bad=[['now','現況'],['aft','AI 導入後']].flatMap(([k,l])=>
+    S[k].map((x,i)=>({k,l,i,x})).filter(o=>mh(o.x)==null));
+  bad.length ? push('ng',`${bad.length} 個步驟工時算不出來`,
+                bad.slice(0,3).map(o=>`${o.l} 第 ${o.i+1} 步`).join('、')+(bad.length>3?' 等':'')+'　·　可到「兩版對照」看黃色標示')
+             : (S.now.length+S.aft.length)&&push('ok','所有步驟皆可換算工時','');
+
+  const noImg=S.now.filter(x=>!x.thumb).length;
+  if(noImg) push('wr',`現況有 ${noImg} 個步驟沒有截圖`,'不影響匯出，但看的人會比較難懂');
+
+  const all=[...S.now,...S.aft];
+  const noFlow=all.filter(x=>!String(x.obj||'').trim()||!String(x.iface||'').trim()).length;
+  if(all.length&&noFlow) push('wr',`${noFlow} 個步驟沒填「檔案／任務」或「介面」`,
+    '兩格填齊，面板才知道 AI 要接哪些檔案與系統');
+  else if(all.length) push('ok','檔案／任務與介面皆已填寫','界接清單可自動產生');
+
+  if(S.aft.length&&!S.aft.some(x=>x.act==='maint'))
+    push('wr','AI 導入後沒有任何「維護」步驟',
+      '規則要調、對照表要更新、誤判要修 —— 這些工時漏填，效益就是高估的');
+  if(S.aft.length&&!S.aft.some(x=>x.kind==='manual'&&(x.act==='judge'||x.act==='review')))
+    push('wr','AI 導入後沒有人在判斷或審核',
+      '全自動不留人把關的情況少見，確認是否漏填');
+  if(S.aft.length===1) push('wr','AI 導入後只有 1 步',
+    '導入後通常還會有維護規則、例外處理、結果抽查等工作，漏填會高估效益');
+  if(S.now.length&&S.aft.length&&rn.total>0&&ra.total===0)
+    push('wr','AI 導入後總工時為 0','完全無人工介入的情況少見，請確認是否漏填');
+
+  return out;
+}
+function renderChecks(){
+  const c=checks(), ng=c.filter(x=>x.lv==='ng').length, wr=c.filter(x=>x.lv==='wr').length;
+  const badge=document.getElementById('chkBadge');
+  if(ng){badge.textContent=`${ng} 項未完成`;badge.style.cssText='background:var(--warn-soft);color:var(--warn)';}
+  else if(wr){badge.textContent=`可匯出 · ${wr} 項提醒`;badge.style.cssText='background:var(--amber-soft);color:var(--amber)';}
+  else {badge.textContent='全部通過';badge.style.cssText='background:var(--ai-soft);color:var(--ai)';}
+  document.getElementById('chkList').innerHTML=c.map(x=>
+    `<div class="ci ${x.lv}"><div class="ic">${x.lv==='ok'?'✓':x.lv==='ng'?'✕':'!'}</div>
+     <div>${esc(x.t)}${x.s?`<small>${esc(x.s)}</small>`:''}</div></div>`).join('');
+  const blocked=ng>0;
+  document.getElementById('btnExport').disabled=blocked;
+  document.getElementById('btnExportTop').disabled=blocked;
+  document.getElementById('btnExport').textContent=blocked?`還有 ${ng} 項未完成`:'匯出交件檔';
+}
+
+function renderSegs(){
+  const html=SHOWS.map(s=>`<button data-u="${s.v}" class="${s.v===S.showUnit?'on':''}">${s.l}</button>`).join('');
+  document.getElementById('segSide').innerHTML=html;
+  document.getElementById('segCmp').innerHTML=html;
+}
+function render(){ renderSegs(); renderList('now'); renderList('aft'); renderCmp(); renderSide(); renderChecks(); }
+
+/* ── 草稿 ── */
+function mark(){ dirty=true; S.updatedAt=new Date().toISOString(); saveDraft(); }
+let saveTimer=null;
+function saveDraft(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    try{ localStorage.setItem(DRAFT,JSON.stringify(S)); saveFailed=false;
+         stamp('草稿已存 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+    }catch(e){ saveFailed=true; stamp('⚠ 草稿太大無法自動儲存，請按「匯出交件檔」保存',true); }
+  },500);
+}
+function stamp(t,bad){const e=document.getElementById('saveState');e.textContent=t;e.style.color=bad?'#ffb4a8':'#8fa6c4';}
+function loadDraft(){
+  for(const key of [DRAFT,...DRAFTS_OLD]){
+    try{const r=localStorage.getItem(key); if(!r) continue;
+        const d=JSON.parse(r);
+        if(d&&(d.schema===SCHEMA||SCHEMAS_OLD.includes(d.schema))){
+          S=adopt(d); return key===DRAFT?'ok':'old'; }
+    }catch(e){}
+  }
+  return false;
+}
+
+/* ── 匯出：組出自帶資料的單檔 HTML ── */
+function fileName(){
+  const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'').slice(0,40);
+  return `${clean(S.dept)||'未填部門'}_${clean(S.title)||'未填題目'}.sop.html`;
+}
+/* 注意：replace 的第二個參數用函式，否則資料裡的 $& $' 會被當成特殊樣式吃掉 */
+function buildHTML(){
+  const data=JSON.parse(JSON.stringify(S));
+  data.exportedAt=new Date().toISOString();
+  data.config={daysPerMonth:D,weeksPerMonth:W};
+  const rn=sum(S.now), ra=sum(S.aft);
+  data.summary={nowTotal:rn.total,nowComplete:rn.complete,aftTotal:ra.total,aftComplete:ra.complete,
+                nowSteps:S.now.length,aftSteps:S.aft.length,
+                savePct:rn.total>0?(rn.total-ra.total)/rn.total*100:null};
+  // 把 < 轉義，避免資料裡的字串把 script 區塊提早收尾
+  const json=JSON.stringify(data).replace(/</g,'\\u003c');
+  return VIEWER.replace('/*__DATA__*/null',()=>json);
+}
+function exportFile(){
+  const html=buildHTML();
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=fileName(); a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  const mb=(blob.size/1048576).toFixed(1);
+  toast(`已匯出 ${a.download}（${mb} MB）`);
+}
+function previewFile(){
+  const w=window.open('','_blank');
+  if(!w) return toast('瀏覽器擋掉了新視窗，請允許彈出視窗',true);
+  w.document.write(buildHTML()); w.document.close();
+}
+function importFile(text){
+  const m=text.match(/<script type="application\/json" id="sop-data">([\s\S]*?)<\/script>/);
+  if(!m) return toast('這個檔案裡找不到 SOP 資料',true);
+  try{
+    const d=JSON.parse(m[1]);            // < 由 JSON.parse 自行還原
+    if(d.schema!==SCHEMA&&!SCHEMAS_OLD.includes(d.schema)) return toast('檔案版本不符',true);
+    const wasOld=d.schema!==SCHEMA;
+    S=adopt(d); active=null; fillMeta(); render(); mark();
+    toast(wasOld?'已載入舊版檔案並轉成新格式，請檢查分類與「共 N 件」'
+                :'已載入：'+(S.dept||'')+' '+(S.title||''));
+  }catch(e){ toast('資料解析失敗',true); }
+}
+
+/* ── 綁定 ── */
+function fillMeta(){
+  mDept.value=S.dept; mTitle.value=S.title; mAuthor.value=S.author;
+  mVol.value=S.volume??''; mVolEvery.value=S.volEvery??1; mVolPer.value=S.volumePer;
+}
+document.getElementById('mVolPer').innerHTML=opt(PERIODS,'day');
+document.getElementById('ifaceList').innerHTML=
+  CFG.ifaces.map(s=>`<option value="${esc(s)}">`).join('');
+['mDept','mTitle','mAuthor'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',e=>{
+    S[{mDept:'dept',mTitle:'title',mAuthor:'author'}[id]]=e.target.value; mark(); renderChecks();
+  });
+});
+document.getElementById('mVol').addEventListener('input',e=>{
+  const v=e.target.value===''?null:Number(e.target.value);
+  S.volume=(v!=null&&v>=0)?v:null; mark();
+  refreshCalc('now'); refreshCalc('aft'); renderCmp(); renderSide(); renderChecks();
+});
+document.getElementById('mVolEvery').addEventListener('input',e=>{
+  const v=Number(e.target.value); S.volEvery=(v>0?v:1); mark();
+  refreshCalc('now'); refreshCalc('aft'); renderCmp(); renderSide(); renderChecks();
+});
+document.getElementById('mVolPer').addEventListener('change',e=>{S.volumePer=e.target.value;mark();render();});
+
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===b.dataset.p));
+  renderSide();
+});
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.add; const st=newStep(k); S[k].push(st); active=st.id; mark(); render();
+  const el=document.querySelector(`[data-id="${st.id}"] .i.t`); el&&el.focus();
+});
+/* 顯示單位切換（側欄與對照頁共用） */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.seg button'); if(!b) return;
+  S.showUnit=b.dataset.u; mark(); render();
+});
+/* 對照頁點步驟 → 跳回對應分頁並選取 */
+document.addEventListener('click',e=>{
+  const n=e.target.closest('[data-jump]'); if(!n) return;
+  const list=n.dataset.jump, id=n.dataset.jid;
+  const tab=document.querySelector(`.tab[data-p="${list==='aft'?'pAft':'pNow'}"]`);
+  tab.click(); active=id; render();
+  const row=document.querySelector(`.step[data-list="${list}"][data-id="${id}"]`);
+  if(row){ row.scrollIntoView({behavior:'smooth',block:'center'});
+           const t=row.querySelector('.i.t'); t&&t.focus(); }
+});
+
+/* 步驟區事件委派 */
+document.addEventListener('input',e=>{
+  const row=e.target.closest('.step'); if(!row) return;
+  const k=e.target.dataset.k; if(!k) return;
+  const st=S[row.dataset.list].find(x=>x.id===row.dataset.id); if(!st) return;
+  let v=e.target.value;
+  if(['dur','hc','every','qty'].includes(k)) v=(v===''?null:Number(v));
+  if(k==='desc') autoGrow(e.target);
+  // 純文字欄位不重建 DOM，避免游標跳掉
+  st[k]=v; mark();
+  refreshCalc(row.dataset.list); renderCmp(); renderSide(); renderChecks();
+});
+document.addEventListener('change',e=>{
+  const row=e.target.closest('.step'); if(!row) return;
+  const k=e.target.dataset.k; if(!k) return;
+  const st=S[row.dataset.list].find(x=>x.id===row.dataset.id); if(!st) return;
+  if(k==='kind'||k==='act'){ st[k]=e.target.value; mark();
+    // 只換色，不重建，選單焦點才不會掉
+    e.target.className=k==='kind'?('tagsel k-'+st.kind):('actsel a-'+st.act);
+    renderCmp(); renderSide(); renderChecks(); return; }
+  if(k==='unit'){ st.unit=e.target.value; mark();
+    refreshCalc(row.dataset.list); renderCmp(); renderSide(); renderChecks(); return; }
+  if(k==='freq'){ st.freq=e.target.value; mark(); render(); return; }
+});
+document.addEventListener('click',e=>{
+  if(e.target.closest('.lb')){ document.getElementById('lb').classList.remove('on'); return; }
+  const row=e.target.closest('.step');
+  if(row){
+    const list=row.dataset.list, id=row.dataset.id;
+    const arr=S[list], i=arr.findIndex(x=>x.id===id), st=arr[i];
+    if(active!==id){ active=id; document.querySelectorAll('.step').forEach(r=>
+        r.classList.toggle('act',r.dataset.id===id)); }
+    if(e.target.dataset.del){
+      if(st.title||st.thumb){ if(!confirm('確定刪除這個步驟？')) return; }
+      arr.splice(i,1); active=null; mark(); render(); return; }
+    if(e.target.dataset.rmimg){ st.thumb=null; st.full=null; mark(); render(); return; }
+    if(e.target.closest('[data-thumb]')){
+      if(st.thumb){ const lb=document.getElementById('lb');
+        document.getElementById('lbImg').src=st.full||st.thumb; lb.classList.add('on'); }
+      else { activeList={list,id}; document.getElementById('filePick').click(); }
+    }
+  }
+});
+document.getElementById('filePick').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(f&&activeList) attach(activeList.list,activeList.id,f);
+  e.target.value='';
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.getElementById('lb').classList.remove('on'); });
+
+/* 貼上 */
+document.addEventListener('paste',e=>{
+  const items=(e.clipboardData||{}).items; if(!items) return;
+  for(const it of items){
+    if(it.type&&it.type.indexOf('image')===0){
+      if(!active) return toast('請先點一下要貼圖的步驟',true);
+      const row=document.querySelector(`.step[data-id="${active}"]`); if(!row) return;
+      e.preventDefault(); attach(row.dataset.list,active,it.getAsFile()); return;
+    }
+  }
+});
+/* 拖曳排序：抓左邊的序號當把手，只在同一條流程內可以搬。
+   用 Pointer Events 而不是 HTML5 drag，滑鼠與觸控才走同一條路徑
+   —— HTML5 的 dragstart 在手機／平板上根本不會觸發。
+   位移超過 4px 才算開始拖，免得單純點一下就被當成拖曳。 */
+let drag=null, scrollTimer=null;
+const clearDrop=()=>document.querySelectorAll('.step.dropbefore,.step.dropafter')
+  .forEach(r=>r.classList.remove('dropbefore','dropafter'));
+/* 靠座標找目前停在哪一列：滑鼠與觸控都適用，也不需要每列各自掛事件 */
+function rowUnder(x,y){ const el=document.elementFromPoint(x,y); return el?el.closest('.step'):null; }
+/* 拖到視窗上下緣時自動捲動，長流程才搬得動。上緣門檻放寬，讓開固定的表頭 */
+function autoScroll(y){
+  clearInterval(scrollTimer); scrollTimer=null;
+  const h=window.innerHeight, top=190, bottom=h-70;
+  const dy=y<top?-Math.ceil((top-y)/6):y>bottom?Math.ceil((y-bottom)/6):0;
+  if(dy) scrollTimer=setInterval(()=>window.scrollBy(0,dy),16);
+}
+document.addEventListener('pointerdown',e=>{
+  if(e.button>0) return;                                   // 只認左鍵／觸控
+  const h=e.target.closest?e.target.closest('[data-drag]'):null; if(!h) return;
+  const row=h.closest('.step');
+  drag={list:row.dataset.list,id:row.dataset.id,y0:e.clientY,started:false,target:null};
+  try{ h.setPointerCapture(e.pointerId); }catch(err){}     // 手指滑出把手也還抓得住
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  if(!drag.started){
+    if(Math.abs(e.clientY-drag.y0)<4) return;              // 還在容錯範圍，當作沒動
+    drag.started=true;
+    const row=document.querySelector(`.step[data-list="${drag.list}"][data-id="${drag.id}"]`);
+    row&&row.classList.add('dragging');
+    document.body.classList.add('dragging-on');
+  }
+  e.preventDefault();
+  clearDrop(); drag.target=null;
+  const row=rowUnder(e.clientX,e.clientY);
+  if(row&&row.dataset.list===drag.list&&row.dataset.id!==drag.id){
+    const r=row.getBoundingClientRect(), before=e.clientY<r.top+r.height/2;
+    row.classList.add(before?'dropbefore':'dropafter');
+    drag.target={id:row.dataset.id,before};
+  }
+  autoScroll(e.clientY);
+},{passive:false});
+function endDrag(){
+  if(!drag) return;
+  const d=drag; drag=null;
+  clearInterval(scrollTimer); scrollTimer=null;
+  document.querySelectorAll('.step.dragging').forEach(r=>r.classList.remove('dragging'));
+  clearDrop(); document.body.classList.remove('dragging-on');
+  if(!d.started||!d.target) return;
+  const arr=S[d.list];
+  const from=arr.findIndex(x=>x.id===d.id);
+  let to=arr.findIndex(x=>x.id===d.target.id);
+  if(from<0||to<0) return;
+  const [moved]=arr.splice(from,1);
+  if(from<to) to--;                        // 往下搬時，抽掉自己會讓目標往前移一格
+  arr.splice(d.target.before?to:to+1,0,moved);
+  active=moved.id; mark(); render();
+}
+document.addEventListener('pointerup',endDrag);
+document.addEventListener('pointercancel',endDrag);
+
+/* 從桌面拖圖片進縮圖：這是作業系統的檔案拖放，跟上面的排序互不相干 */
+document.addEventListener('dragover',e=>{
+  const t=e.target.closest('[data-thumb]'); if(!t) return;
+  e.preventDefault(); t.classList.add('over');
+});
+document.addEventListener('dragleave',e=>{
+  const t=e.target.closest('[data-thumb]'); t&&t.classList.remove('over');
+});
+document.addEventListener('drop',e=>{
+  const t=e.target.closest('[data-thumb]'); if(!t) return;
+  e.preventDefault(); t.classList.remove('over');
+  const row=t.closest('.step'), f=(e.dataTransfer.files||[])[0];
+  if(row&&f) attach(row.dataset.list,row.dataset.id,f);
+});
+
+/* 工具列 */
+document.getElementById('btnExport').onclick=exportFile;
+document.getElementById('btnExportTop').onclick=exportFile;
+document.getElementById('btnPreview').onclick=previewFile;
+document.getElementById('btnImport').onclick=()=>document.getElementById('htmlPick').click();
+document.getElementById('htmlPick').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const fr=new FileReader(); fr.onload=()=>importFile(fr.result); fr.readAsText(f,'utf-8');
+  e.target.value='';
+});
+document.getElementById('btnClear').onclick=()=>{
+  if(!confirm('會清掉目前所有內容（草稿也一併刪除），確定？')) return;
+  S=blank(); active=null; [DRAFT,...DRAFTS_OLD].forEach(k=>localStorage.removeItem(k));
+  fillMeta(); render(); toast('已清空');
+};
+document.getElementById('btnSample').onclick=()=>{
+  if((S.now.length||S.aft.length)&&!confirm('會覆蓋目前內容，確定載入範例？')) return;
+  S=sample(); active=null; fillMeta(); render(); mark(); toast('已載入品保部範例');
+};
+/* 草稿有自動存，只有存不進去時才攔關閉 */
+window.addEventListener('beforeunload',e=>{
+  if(saveFailed&&dirty&&(S.now.length||S.aft.length)){ e.preventDefault(); e.returnValue=''; }
+});
+
+function toast(t,bad){
+  const el=document.getElementById('toast');
+  el.textContent=t; el.className='toast on'+(bad?' bad':'');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className='toast'+(bad?' bad':''),2600);
+}
+function busy(on){ document.getElementById('busy').classList.toggle('on',on); }
+
+/* 範例（品保部真實案例，無截圖） */
+function sample(){
+  const d=blank();
+  d.dept='品質保證部'; d.title='供應商自主檢驗表異常稽核與退件通知';
+  d.volume=176; d.volumePer='day';
+  /* 每天 176 件，逐件處理的步驟就是「共 176 件，每 1 日一次」 */
+  const each=o=>Object.assign(newStep('now'),{qty:176,every:1,freq:'day',unit:'sec',hc:1},o);
+  const once=o=>Object.assign(newStep('aft'),{qty:1,every:1,freq:'day',unit:'sec',hc:1},o);
+  d.now=[
+    each({kind:'manual',act:'exec',  title:'搜尋自主檢驗表空白資料',dur:10,
+          desc:'於 QMS 逐一開啟四大類檢驗表，找出未填寫欄位',
+          obj:'供應商自主檢驗表（四大類）',iface:'QMS'}),
+    each({kind:'manual',act:'judge', title:'判定 QMS 分類是否正確',dur:12,
+          desc:'比對料件性質與檢驗表分類，判斷歸類有無錯誤',
+          obj:'檢驗表分類與料件性質',iface:'QMS'}),
+    each({kind:'manual',act:'exec',  title:'以料件標號於 TT 系統查廠商名稱',dur:43,
+          desc:'切換至 TIPTOP，輸入料號查詢供應商主檔',
+          obj:'料號對應的供應商主檔',iface:'TIPTOP'}),
+    each({kind:'manual',act:'exec',  title:'依廠商名稱查詢郵件地址',dur:20,
+          desc:'翻查通訊錄或既往信件，取得窗口信箱',
+          obj:'廠商窗口通訊錄',iface:'Excel'}),
+    each({kind:'manual',act:'exec',  title:'發信通知廠商並辦理退貨',dur:180,
+          desc:'逐件撰寫退件通知信、附加檢驗表、寄出並登錄',
+          obj:'退件通知信與檢驗表附件',iface:'Outlook / 信件'})
+  ];
+  d.aft=[
+    once({kind:'ai',    act:'exec',  title:'AI 自動掃描 QMS、判定分類、反查廠商與信箱',dur:0,
+          desc:'每日排程觸發，四個查找動作一次完成',
+          obj:'自主檢驗表 → 異常件清單',iface:'AI 工具'}),
+    once({kind:'manual',act:'review',title:'批次審核退件通知信並一次送出',dur:180,
+          desc:'AI 產生整批草稿，檢驗課人員審核批准後送出',
+          obj:'AI 產生的退件通知草稿',iface:'Outlook / 信件'}),
+    once({kind:'manual',act:'maint', title:'維護判定規則與廠商對照表',dur:30,unit:'min',freq:'week',
+          desc:'每週檢視誤判案例，調整規則、更新過期信箱',
+          obj:'判定規則表、廠商信箱對照',iface:'Excel'})
+  ];
+  return d;
+}
+
+/* ══════════ 匯出用的檢視器樣板 ══════════ */
+const VIEWER=`<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP 流程與工時</title>
+<style>
+:root{--bg:#eef1f5;--panel:#fff;--ink:#16202b;--ink2:#5a6b7c;--ink3:#8b9aa9;--line:#dfe5ec;--line2:#eef2f6;
+--now:#5a6b7c;--ai:#1f9d6b;--ai-soft:#e7f6ef;--warn:#d4483b;--warn-soft:#fdecea;
+--manual:#e8833a;--manual-soft:#fdf1e6;--system:#3b7fd4;--system-soft:#e9f1fc;
+--a-exec:#5a6b7c;--a-judge:#8256c8;--a-review:#c05a86;--a-wait:#8b9aa9;--a-maint:#b07d0a;
+--amber:#b07d0a;--amber-soft:#fdf5e2;
+--font:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:700}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 70px}
+.doc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px 30px 32px}
+.hd{border-bottom:2px solid var(--ink);padding-bottom:13px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.hd h2{font-size:21px}.hd .m{font-size:12px;color:var(--ink3);margin-top:4px}
+.hd .vol{text-align:right;font-size:12px;color:var(--ink3);white-space:nowrap}
+.hd .vol b{display:block;font-size:20px;color:var(--ink)}
+.bar1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sub{display:inline-flex;background:#e4e9ef;padding:3px;border-radius:9px;gap:2px}
+.sb{background:none;border:0;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink2);padding:7px 15px;border-radius:7px;cursor:pointer}
+.sb.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,32,45,.1)}
+.seg{display:inline-flex;background:#e4e9ef;border-radius:9px;padding:3px;gap:2px;margin-left:auto}
+.seg button{border:0;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 12px;border-radius:7px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,32,45,.1)}
+.v{display:none}.v.on{display:block}
+.s3{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:20px;flex-wrap:wrap}
+.s3>div{flex:1;min-width:170px;padding:14px 17px;border-left:1px solid var(--line)}
+.s3>div:first-child{border-left:0}
+.s3 .l{font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.05em}
+.s3 .n{font-size:24px;font-weight:800;letter-spacing:-.02em}.s3 .n small{font-size:13px;font-weight:600;color:var(--ink2)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.ch{display:flex;align-items:baseline;gap:9px;padding:9px 13px;border-radius:8px;margin-bottom:11px}
+.ch.a{background:#e7ebf1}.ch.b{background:var(--ai-soft)}
+.ch b{font-size:13.5px}.ch .c{font-size:12px;color:var(--ink3)}.ch .t{margin-left:auto;font-size:12px;font-weight:700}
+.cf{margin-top:11px;padding:11px 13px;border-radius:8px;display:flex;align-items:baseline;gap:8px;font-size:12.5px}
+.cf.a{background:#f4f6f9;border:1px solid var(--line)}.cf.b{background:var(--ai-soft);border:1px solid #bde5d3}
+.cf b{font-size:19px;font-weight:800}
+.node{border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:#fff;display:flex;gap:11px;min-height:86px}
+.node.hot{border-color:#eab4ad;background:var(--warn-soft)}
+.node.aft{border-color:#c6e6d6;background:#fbfefc}
+.node.na{border-color:#eec98a;background:#fffcf3}
+.nt{width:72px;height:52px;border-radius:5px;overflow:hidden;border:1px solid var(--line);flex:none;background:#f3f6f9;cursor:zoom-in}
+.nt.ph{border:1.5px dashed #d3dce5;cursor:default}
+.nt img{width:100%;height:100%;object-fit:cover;display:block}
+.nb{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.n1{display:flex;gap:7px;align-items:center}
+.ix{width:19px;height:19px;border-radius:5px;background:var(--ink);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.node.aft .ix{background:var(--ai)}
+.node h4{font-size:13.5px;line-height:1.35}
+.nd{font-size:11.5px;color:var(--ink3);line-height:1.45;white-space:pre-wrap}
+.nm{margin-top:auto;padding-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--ink2)}
+.tg,.tg2{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;border:1px solid transparent}
+.tg2{background:#fff;border-color:var(--line)}
+.k-manual{background:var(--manual-soft);color:var(--manual);border-color:#f2d7bd}
+.k-system{background:var(--system-soft);color:var(--system);border-color:#c8ddf5}
+.k-ai{background:var(--ai-soft);color:var(--ai);border-color:#bde5d3}
+.a-exec{color:var(--a-exec)}
+.a-judge{color:var(--a-judge);border-color:#ddd0f0}
+.a-review{color:var(--a-review);border-color:#f0cfdd}
+.a-wait{color:var(--a-wait)}
+.a-maint{color:var(--a-maint);border-color:#eddda8;background:var(--amber-soft)}
+.lg b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.p{background:#f1f4f8;border:1px solid var(--line);padding:1px 7px;border-radius:99px;font-variant-numeric:tabular-nums}
+.p.o{background:#fff;border-style:dashed}
+.p.r{background:var(--warn-soft);border-color:#f5cdc8;color:var(--warn);font-weight:700}
+.p.g{background:var(--ai-soft);border-color:#bde5d3;color:var(--ai);font-weight:700}
+.p.na{background:var(--amber-soft);border-color:#eddda8;color:var(--amber);font-weight:700}
+.sc{height:4px;background:#f0f3f6;border-radius:99px;overflow:hidden;margin-top:5px}
+.sc i{display:block;height:100%;border-radius:99px;min-width:2px}
+.cn{height:16px;width:1.5px;background:#cdd8e4;margin:0 auto}
+.col1{max-width:680px}
+.lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:20px;padding-top:14px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.ft{margin-top:16px;font-size:11.5px;color:var(--ink3);text-align:center}
+.lb{position:fixed;inset:0;background:rgba(15,22,32,.85);display:none;align-items:center;justify-content:center;z-index:9;padding:36px}
+.lb.on{display:flex}.lb img{max-width:100%;max-height:100%;border-radius:8px}
+.lb .x{position:absolute;top:18px;right:26px;color:#fff;font-size:32px;cursor:pointer;opacity:.75}
+@media(max-width:900px){.cmp{grid-template-columns:1fr}}
+@media print{body{background:#fff}.sub,.seg,.lb{display:none}.doc{border:0;padding:0}.v{display:block!important}}
+</style></head><body>
+<div class="wrap"><div class="doc">
+  <div class="hd"><div><h2 id="h-title"></h2><div class="m" id="h-meta"></div></div>
+    <div class="vol" id="h-vol"></div></div>
+  <div class="bar1">
+    <div class="sub">
+      <button class="sb on" data-v="v-cmp">⇄ 兩版對照</button>
+      <button class="sb" data-v="v-now">現況流程</button>
+      <button class="sb" data-v="v-aft">AI 導入後流程</button>
+    </div>
+    <div class="seg" id="seg"></div>
+  </div>
+  <div class="v on" id="v-cmp">
+    <div class="s3" id="stat"></div>
+    <div class="cmp">
+      <div><div class="ch a"><b>現況流程</b><span class="c" id="cn"></span><span class="t" id="tn"></span></div>
+        <div id="colA"></div><div class="cf a">合計 <b id="fn"></b> <span class="uu"></span></div></div>
+      <div><div class="ch b"><b>AI 導入後流程</b><span class="c" id="ca"></span><span class="t" id="ta" style="color:var(--ai)"></span></div>
+        <div id="colB"></div><div class="cf b">合計 <b id="fa" style="color:var(--ai)"></b> <span class="uu"></span></div></div>
+    </div>
+    <div class="lg" id="lg"></div>
+  </div>
+  <div class="v" id="v-now"><div class="col1" id="colA2"></div></div>
+  <div class="v" id="v-aft"><div class="col1" id="colB2"></div></div>
+  <div class="ft" id="ft"></div>
+</div></div>
+<div class="lb" id="lb"><span class="x">×</span><img id="lbi" alt=""></div>
+<script type="application/json" id="sop-data">/*__DATA__*/null<\/script>
+<script>
+var DATA=JSON.parse(document.getElementById('sop-data').textContent);
+var KL={manual:'人工',system:'系統',ai:'AI'};                                  // 第一層｜誰出力
+var AL={exec:'執行',judge:'判斷',review:'審核',wait:'等待',maint:'維護'};       // 第二層｜在做什麼
+var KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
+var D=(DATA.config&&DATA.config.daysPerMonth)||20.8, W=(DATA.config&&DATA.config.weeksPerMonth)||4.33;
+var PM={day:D,week:W,month:1,quarter:1/3,year:1/12};
+var UN={sec:1,min:60,hr:3600}, UL={sec:'秒',min:'分',hr:'小時'};
+var PL={day:'日',week:'週',month:'月',quarter:'季',year:'年'};
+var SH=[{v:'day',l:'每日',d:D,u:'人時/日'},{v:'week',l:'每週',d:W,u:'人時/週'},{v:'month',l:'每月',d:1,u:'人時/月'}];
+var cur=DATA.showUnit||'day';
+function U(){ for(var i=0;i<SH.length;i++) if(SH[i].v===cur) return SH[i]; return SH[0]; }
+function cv(m){ return m==null?null:m/U().d; }
+function ev(s){ var n=Number(s.every); return n>0?n:1; }
+function occ(s){ return s.freq==='none'?0:PM[s.freq]/ev(s); }
+function FLT(s){ if(s.freq==='none')return '不定期';
+  var n=ev(s), u=PL[s.freq]||''; return n===1?'每'+u:'每 '+n+' '+u; }
+function DUR(s){ return (s.dur==null||s.dur==='')?'—':s.dur+' '+(UL[s.unit]||''); }
+function QTY(s){ if(s.qty==null||s.qty==='')return null; var q=Number(s.qty); return q>=0?q:null; }
+function mh(s){ if(s.dur==null||s.dur==='')return null; var q=QTY(s); if(q==null)return null;
+  return Number(s.dur)*(UN[s.unit]||60)*q*(Number(s.hc)||0)*occ(s)/3600; }
+function f(n){ return n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
+  :(n>0&&n<0.01?'<0.01':n.toFixed(2)); }
+function tot(a){ var t=0; a.forEach(function(s){var m=mh(s); if(m!=null)t+=m;}); return t; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+var NOW=DATA.now||[], AFT=DATA.aft||[], tn=tot(NOW), ta=tot(AFT);
+var all=NOW.concat(AFT).map(mh).filter(function(v){return v!=null;});
+var GMAX=all.length?Math.max.apply(null,all):0;
+var pkN=Math.max.apply(null,NOW.map(mh).map(function(v){return v||0;}).concat([0]));
+var pkA=Math.max.apply(null,AFT.map(mh).map(function(v){return v||0;}).concat([0]));
+
+document.getElementById('h-title').textContent=DATA.title||'（未填題目）';
+document.getElementById('h-meta').textContent=[DATA.dept||'（未填部門）',
+  DATA.author?'填表：'+DATA.author:'', DATA.exportedAt?'匯出於 '+DATA.exportedAt.slice(0,10):'']
+  .filter(Boolean).join('　·　');
+document.getElementById('h-vol').innerHTML=DATA.volume>0?
+  '處理量<b>'+DATA.volume+'</b>件 / 每 '+(Number(DATA.volEvery)>1?DATA.volEvery+' ':'')+(PL[DATA.volumePer]||''):'';
+
+function node(s,i,isAft,pk,showPct,colTot){
+  var m=mh(s), na=(m==null), hot=(m!=null&&m===pk&&m>0);
+  var w=(m!=null&&GMAX>0)?Math.max(m/GMAX*100,m>0?1:0):0;
+  return '<div class="node'+(isAft?' aft':'')+(hot?' hot':'')+(na?' na':'')+'">'+
+   (s.thumb?'<div class="nt" data-full="'+(s.full||s.thumb)+'"><img src="'+s.thumb+'" alt=""></div>'
+           :'<div class="nt ph"></div>')+
+   '<div class="nb"><div class="n1"><div class="ix">'+(i+1)+'</div><h4>'+esc(s.title||'（未命名）')+'</h4></div>'+
+   (s.desc?'<div class="nd">'+esc(s.desc)+'</div>':'')+
+   '<div class="nm"><span class="tg k-'+s.kind+'">'+(KL[s.kind]||'')+'</span>'+
+   '<span class="tg2 a-'+s.act+'">'+(AL[s.act]||'')+'</span>'+
+   (s.obj?'<span class="p o">'+esc(s.obj)+'</span>':'')+
+   (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
+   '<span class="p'+(hot?' r':'')+'">每件 '+DUR(s)+' · 共 '+(QTY(s)==null?'—':QTY(s))+' 件 · '+
+     FLT(s)+' · '+(s.hc||0)+' 人</span>'+
+   '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
+     (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
+   '</div><div class="sc"><i style="width:'+w+'%;background:'+
+     (na?'var(--amber)':hot?'var(--warn)':(KC[s.kind]||'var(--now)'))+'"></i></div>'+
+   '</div></div>';
+}
+function col(arr,isAft,el,pk,showPct,colTot){
+  document.getElementById(el).innerHTML=arr.length?arr.map(function(s,i){
+    return node(s,i,isAft,pk,showPct,colTot)+(i<arr.length-1?'<div class="cn"></div>':'');
+  }).join(''):'<div style="padding:26px;text-align:center;color:var(--ink3);border:1.5px dashed var(--line);border-radius:9px">尚未填寫</div>';
+}
+function paint(){
+  var u=U(), pct=tn>0?(tn-ta)/tn*100:null;
+  document.getElementById('stat').innerHTML=
+   '<div><div class="l">現況</div><div class="n">'+f(cv(tn))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+NOW.length+' 步</div></div>'+
+   '<div><div class="l">AI 導入後</div><div class="n" style="color:var(--ai)">'+f(cv(ta))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+AFT.length+' 步</div></div>'+
+   '<div><div class="l">淨改善</div><div class="n" style="color:var(--warn)">'+
+   (pct==null?'—':(pct>=0?'↓ ':'↑ ')+Math.abs(pct).toFixed(1)+'<small>%</small>')+'</div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+
+   (pct==null?'資料不足':'淨省 '+f(cv(tn-ta))+' '+u.u)+'</div></div>';
+  col(NOW,false,'colA',pkN,false,0); col(AFT,true,'colB',pkA,false,0);
+  col(NOW,false,'colA2',pkN,true,tn); col(AFT,true,'colB2',pkA,true,ta);
+  document.getElementById('cn').textContent=NOW.length+' 步';
+  document.getElementById('ca').textContent=AFT.length+' 步';
+  document.getElementById('tn').textContent=f(cv(tn))+' '+u.u;
+  document.getElementById('ta').textContent=f(cv(ta))+' '+u.u;
+  document.getElementById('fn').textContent=f(cv(tn));
+  document.getElementById('fa').textContent=f(cv(ta));
+  var uu=document.querySelectorAll('.uu');
+  for(var k=0;k<uu.length;k++) uu[k].textContent=u.u;
+  document.getElementById('seg').innerHTML=SH.map(function(x){
+    return '<button data-u="'+x.v+'"'+(x.v===cur?' class="on"':'')+'>'+x.l+'</button>';}).join('');
+  document.getElementById('ft').textContent=
+    '換算基準：每月 '+D+' 個工作日、'+W+' 週　·　目前顯示單位：'+u.l+
+    '　·　由 SOP 工時盤點填表器產出';
+}
+document.getElementById('lg').innerHTML=
+ ['manual','system','ai'].map(function(k){
+   return '<span><b style="background:'+KC[k]+'"></b>'+KL[k]+'</span>';}).join('')+
+ '<span>｜白框標籤＝執行／判斷／審核／等待／維護</span>'+
+ '<span style="margin-left:auto">兩欄比例尺相同　·　黃底＝工時資料不足　·　點縮圖放大</span>';
+paint();
+
+var sbs=document.querySelectorAll('.sb');
+for(var i=0;i<sbs.length;i++){ sbs[i].onclick=(function(b){ return function(){
+  for(var j=0;j<sbs.length;j++){ sbs[j].classList.toggle('on',sbs[j]===b);
+    document.getElementById(sbs[j].dataset.v).classList.toggle('on',sbs[j]===b); }
+};})(sbs[i]); }
+var lb=document.getElementById('lb');
+document.addEventListener('click',function(e){
+  var b=e.target.closest?e.target.closest('#seg button'):null;
+  if(b){ cur=b.getAttribute('data-u'); paint(); return; }
+  var t=e.target.closest?e.target.closest('[data-full]'):null;
+  if(t){ document.getElementById('lbi').src=t.getAttribute('data-full'); lb.classList.add('on'); }
+  else if(e.target.closest&&e.target.closest('.lb')) lb.classList.remove('on');
+});
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') lb.classList.remove('on'); });
+<\/script></body></html>`;
+
+/* ── 啟動 ── */
+const loaded=loadDraft();
+if(loaded==='old') stamp('已接續舊版草稿並轉成新格式');
+else if(loaded) stamp('已接續上次的草稿');
+fillMeta(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# 錄影與匯出物 —— 這些會帶內部系統畫面，不要進版控
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.zip
+
+# 標註器／填表器的實際產出（範例除外，範例已明確列在 examples/）
+*_標註/
+!examples/*_標註/
+payload.json
+討論紀錄*.md
+
+# 系統雜物
+Thumbs.db
+desktop.ini
+.DS_Store
