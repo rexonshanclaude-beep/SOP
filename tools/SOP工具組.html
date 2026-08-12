@@ -77,11 +77,6 @@ button,input,select,textarea{font-family:inherit}
 
 /* 流程名稱：本來塞在深色工具列裡，看起來像裝飾，沒人知道要打字。
    拉出來自成一條淺色欄位列，有 label 有說明，一眼就知道是要填的。 */
-.app-mark .demo{margin-top:16px;appearance:none;cursor:pointer;font-family:inherit;
-  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.24);color:#cfdcea;
-  border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;
-  transition:background .13s,border-color .13s,color .13s}
-.app-mark .demo:hover{background:rgba(47,109,246,.30);border-color:var(--brand);color:#fff}
 .app-mark .namebar{flex:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   padding:11px 16px;background:var(--panel,#fff);border-bottom:1px solid var(--line)}
 .app-mark .namebar label{font-size:13px;font-weight:800;color:var(--ink);flex:none}
@@ -202,8 +197,14 @@ button,input,select,textarea{font-family:inherit}
 /* contain 不是 cover：寧可留黑邊，也要讓縮圖等於你標到的整個畫面。
    用 cover 會把上下（或左右）裁掉，看起來就跟當初標的不一樣。 */
 .app-mark .bth img{width:100%;height:100%;object-fit:contain;display:block}
-.app-mark .bth .miss{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:10.5px;color:var(--ink3);text-align:center;padding:4px;line-height:1.35}
+/* 外層只負責置中；文字一定要包一層，否則 <b> 和文字節點會各自
+   變成 flex item，<br> 斷不了行，整段就歪掉。 */
+.app-mark .bth .miss{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;padding:5px}
+.app-mark .bth .miss span{font-size:10.5px;color:var(--ink3);text-align:center;line-height:1.75}
+.app-mark .bth .miss b{display:inline-block;background:#fff;border:1px solid #c6d0dc;
+  border-radius:3px;padding:0 4px;margin:0 1px;font-size:9.5px;font-weight:700;
+  color:var(--ink2);line-height:1.6}
 .app-mark .bth .edited{position:absolute;left:3px;bottom:3px;background:rgba(47,95,208,.92);color:#fff;
   font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:99px;letter-spacing:.02em}
 .app-mark .bth .pen{position:absolute;right:3px;bottom:3px;background:rgba(13,20,29,.72);color:#fff;
@@ -595,6 +596,7 @@ button,input,select,textarea{font-family:inherit}
   <div class="tools">
     <button class="tb" id="btnOpen">匯入影片</button>
     <button class="tb" id="btnMarks">載入標註檔</button>
+    <button class="tb" id="btnDemo">載入範例</button>
     <button class="tb" id="btnClear">清空</button>
     <button class="tb go" id="btnOut" disabled>匯出<span class="n" id="outN">0</span></button>
   </div>
@@ -625,11 +627,8 @@ button,input,select,textarea{font-family:inherit}
       <video id="vid" playsinline></video>
       <div class="hud" id="hud">00:00.0</div>
       <div class="drop" id="drop">
-        <b>把圖片或螢幕錄影拖進來</b>
-        <span>或按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 直接貼上截圖　·　點這裡選影片</span>
-        <small>圖片可以一次拖一批，順序之後能再調<br>
-          影片與圖片只在這台電腦上讀取，不會上傳</small>
-        <button class="demo" id="btnDemo">沒概念？載入一份範例看看</button>
+        <b>點一下選影片</b>
+        <span>或把影片拖進來</span>
       </div>
     </div>
 
@@ -1276,8 +1275,8 @@ function blockHTML(m, i){
       <div class="bth" ${th ? 'data-edit="1" title="點一下開啟截圖編輯器（箭頭／框／遮蔽／放大擷取）"'
                             : 'data-pick="1" title="點一下選圖片"'}>
         ${th ? `<img src="${th}" alt="">`
-             : `<div class="miss">${fromVideo(m) ? '畫面待補<br>按 ⟳ 對齊'
-                 : '<b>Ctrl</b>+<b>V</b> 貼上<br>或點這裡選檔'}</div>`}
+             : `<div class="miss"><span>${fromVideo(m) ? '畫面待補<br>按 ⟳ 對齊'
+                 : '<b>Ctrl</b>+<b>V</b> 貼上<br>或點這裡選檔'}</span></div>`}
         ${n ? `<span class="edited">已標記 ${n}</span>` : ''}
         ${th ? '<span class="pen">✎ 標記</span>' : ''}
       </div>
@@ -1304,7 +1303,7 @@ function renderBlocks(){
   if (!S.marks.length){
     el.innerHTML = `<div class="lempty">${ready
       ? '還沒有步驟。<br>播到要記錄的畫面按 <b>M</b>，或在下面加一步。'
-      : '把圖片拖進右邊、按 Ctrl+V 貼上，<br>或從下面加一步。'}</div>` + add;
+      : '從下面加一步，<br>再把圖貼進去。'}</div>` + add;
   } else {
     el.innerHTML = ins(0) + S.marks.map((m, i) => blockHTML(m, i) + ins(i + 1)).join('') + add;
     el.querySelectorAll('textarea.note').forEach(grow);
