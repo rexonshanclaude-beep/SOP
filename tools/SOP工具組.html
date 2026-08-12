@@ -1864,8 +1864,19 @@ async function loadExample(){
                                    edits:JSON.parse(JSON.stringify(d.edits)), _th:null }));
   active = S.marks[0].id;
   $('sopTitle').value = 'Claude 帳號登入與團隊切換';
-  busy(false);
   openVideo(f);
+  /* 影片萬一載不起來，別留下五格空白讓人以為工具壞了 */
+  const ok = await new Promise(res => {
+    if (ready) return res(true);
+    const t = setTimeout(() => res(false), 8000);
+    V.addEventListener('loadedmetadata', () => { clearTimeout(t); res(true); }, {once:true});
+    V.addEventListener('error',          () => { clearTimeout(t); res(false); }, {once:true});
+  });
+  busy(false);
+  if (!ok){
+    S.marks = []; active = null; render();
+    return toast('範例的影片載不起來 —— 換 Chrome 或 Edge 再試一次', true);
+  }
   toast('範例載好了 —— 拖時間軸、按 M 加一刀，或直接「帶進工時紀錄」');
 }
 $('btnDemo').onclick = loadExample;
