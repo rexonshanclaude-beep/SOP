@@ -2444,25 +2444,12 @@ function adopt(d){
   const o=Object.assign(blank(),d);
   o.now=(d.now||[]).map(x=>migStep(x,d));
   o.aft=(d.aft||[]).map(x=>migStep(x,d));
-  /* 舊檔把頻率與人數放在每個步驟上。取最多數的升到流程層級。
-     有步驟跟大多數不一樣時要講出來 —— 那些步驟的工時會被改掉，
-     默默改數字比報錯還糟。 */
-  /* 舊檔的步驟各自帶件數。件數已經升到流程層級，步驟只留「逐件／整批」。
-     判不準的（既不是 1 也不是總量）要講出來，那幾步的工時會變。 */
-  /* 舊檔的件數是絕對數量；現在拆成「流程跑幾次 × 這一步每次幾份」。
-     用總次數去除，除不盡的要講出來，那幾步的工時會變。 */
-  if(o.volume){
-    const V=Number(o.volume)||1, odd=[];
-    o.now.concat(o.aft).forEach(x=>{
-      if(x.qty==null) { x.qty=1; return; }
-      const q=Number(x.qty)/V;
-      x.qty = Math.abs(q-Math.round(q))<0.01 ? Math.round(q) : +q.toFixed(3);
-      if(Math.abs(q-Math.round(q))>=0.01) odd.push(x.title||'(未命名)');
-    });
-    if(odd.length) setTimeout(()=>toast(
-      `有 ${odd.length} 個步驟的件數除不盡總次數（${odd.slice(0,2).join('、')}…），`
-      + `份數已用小數表示 —— 請檢查工時`, true), 700);
-  }
+  /* 舊檔把頻率、人數、件數都掛在每個步驟上；新版是流程層「每 N 日跑 M 次、共 K 人」，
+     步驟只留「每次幾份」。轉換時把每一步的月人時原封不動換算過去 ——
+     算出來的份數是小數不好看沒關係，數字被默默改掉才是災難。
+
+     ⚠ 只有舊檔要轉。新檔（已經有 runFreq）再除一次總次數，份數會被抹成 0，
+       等於自己存的檔案重開一次工時就全沒了。 */
   if(!('runFreq' in d)){
     const all=o.now.concat(o.aft);
     const mode=k=>{const c={}; all.forEach(x=>{const v=x[k]; c[v]=(c[v]||0)+1;});
@@ -2471,13 +2458,25 @@ function adopt(d){
       o.runFreq  = mode('freq') || 'day';
       o.runEvery = Number(mode('every'))>0 ? Number(mode('every')) : 1;
       o.runHc    = Number(mode('hc'))>0    ? Number(mode('hc'))    : 1;
-      const odd=all.filter(x=> String(x.freq)!==String(o.runFreq)
-                            || Number(x.every)!==o.runEvery
-                            || Number(x.hc)!==o.runHc );
-      if(odd.length) setTimeout(()=>toast(
-        `這份檔案有 ${odd.length} 個步驟的頻率或人數跟其他步驟不同，`
-        + `已一律改成整條流程的設定 —— 請檢查工時是否還正確`, true), 400);
     }
+    /* 月人時 = 每次秒數 × 份數 × 次數 × 人數 × 月輪數。
+       每次秒數兩邊一樣，所以只要「份數 × 次數 × 人數 × 月輪數」相等，工時就不會變 */
+    const V=Number(o.volume)>0?Number(o.volume):1;
+    const occOf=(f,e)=> f==='none' ? 0 : (PM[f]||0)/(Number(e)>0?Number(e):1);
+    const occNew=occOf(o.runFreq,o.runEvery), denom=V*o.runHc*occNew;
+    const odd=[];
+    all.forEach(x=>{
+      const q=x.qty==null?1:Number(x.qty);
+      const h=Number(x.hc)>0?Number(x.hc):1;
+      /* 取有效位數不是小數位數：一年一次的步驟換算出來可能是 0.0000228，
+         用小數位數會被砍成 0，那一步的工時就又不見了 */
+      const conv = denom>0 ? q*h*occOf(x.freq,x.every)/denom : q/V;
+      x.qty = conv>0 ? +conv.toPrecision(6) : 0;
+      if(String(x.freq)!==String(o.runFreq)||h!==o.runHc) odd.push(x.title||'(未命名)');
+    });
+    if(odd.length) setTimeout(()=>toast(
+      `有 ${odd.length} 個步驟的頻率或人數跟其他步驟不同（${odd.slice(0,2).join('、')}…）。`
+      + `已統一成整條流程的設定，份數同步換算過，工時維持原樣 —— 那幾步的份數會是小數`, true), 500);
     all.forEach(x=>{ delete x.freq; delete x.every; delete x.hc; });
   }
   if(!SHOWS.some(s=>s.v===o.showUnit)) o.showUnit='day';
