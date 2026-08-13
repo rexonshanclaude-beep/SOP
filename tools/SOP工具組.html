@@ -461,6 +461,14 @@ button,input,select,textarea{font-family:inherit}
   font-size:11.5px;font-weight:700;color:var(--ink2);padding-top:6px}
 .app-form .r3 .pair > input,.app-form .r3 .pair > textarea{flex:1;min-width:0}
 .app-form .meta .fld.wide{grid-column:1/-1}
+/* 對照頁：基本資料收成一行唯讀總表 */
+.app-form .metaview{display:none;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:2px 2px 4px;font-size:13.5px;color:var(--ink2)}
+.app-form .metaview b{color:var(--ink);font-weight:800}
+.app-form .metaview .sep{color:#c3cede}
+.app-form #metaCard.summary .meta{display:none}
+.app-form #metaCard.summary .metaview{display:flex}
+.app-form #metaCard.summary .chead{margin-bottom:2px}
 .app-form .meta .fld.wide .vol{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .app-form .meta #mRunFreq{width:104px;flex:none}
 .app-form .meta #mRunEvery,.app-form .meta #mVol,.app-form .meta #mRunHc{width:66px;flex:none}
@@ -789,8 +797,9 @@ button,input,select,textarea{font-family:inherit}
   <div class="grid">
     <div>
       <!-- 基本資料 -->
-      <div class="card" style="margin-bottom:14px">
+      <div class="card" id="metaCard" style="margin-bottom:14px">
         <div class="chead"><div><h3>基本資料</h3></div></div>
+        <div class="metaview" id="metaView"></div>
         <div class="meta">
           <div class="fld"><label>部門 <span style="color:var(--warn)">*</span></label>
             <input class="i" id="mDept" placeholder="例：品質保證部"></div>
@@ -1577,13 +1586,26 @@ document.addEventListener('keydown', e => {
 
 /* ══════════════ 截圖編輯器 ══════════════ */
 let ED = null;   // {m, tool, color, shapes, crop, drawing, p0, p1}
-function openEditor(m){
+/* 外部（填表器）借用同一套編輯器：丟一個 {full, edits} 進來，
+   存檔時回呼合成好的結果。這樣兩頁的標記工具完全一致，不必再寫一份。 */
+async function editImage(obj, onSave){
+  const img = await loadImg(obj.full);
+  if (!img) return toast('這張圖讀不出來', true);
+  const tmp = { id:'ext', t:null, name:obj.name||'', note:'', full:obj.full, img,
+                edits:obj.edits ? JSON.parse(JSON.stringify(obj.edits)) : newEdits(), _th:null };
+  extSave = m => onSave({ edits:m.edits, full:shotOf(m), thumb:render1(m, CFG.thumbW, CFG.thumbQ) });
+  openEditor(tmp, true);
+}
+let extSave = null;
+function openEditor(m, external){
   if (!m.img) return toast('這一格還沒有畫面，先按「⟳ 對齊」重抓', true);
+  if (!external) extSave = null;
   ED = { m, tool:'arrow', color:CFG.colors[0],
          shapes:JSON.parse(JSON.stringify(m.edits.shapes)),
          crop:m.edits.crop ? Object.assign({}, m.edits.crop) : null,
          drawing:false, p0:null, p1:null };
-  $('edTitle').textContent = `標記截圖 · 第 ${S.marks.indexOf(m)+1} 步` + (fromVideo(m) ? `（${t1(m.t)}）` : (m.name ? `（${m.name}）` : ''));
+  $('edTitle').textContent = external ? '標記截圖'
+    : `標記截圖 · 第 ${S.marks.indexOf(m)+1} 步` + (fromVideo(m) ? `（${t1(m.t)}）` : (m.name ? `（${m.name}）` : ''));
   $('edCols').innerHTML = CFG.colors.map(c =>
     `<button data-c="${c}" style="background:${c}" class="${c===ED.color?'on':''}"></button>`).join('');
   $('mEd').classList.add('on');
@@ -1678,6 +1700,8 @@ $('edOk').onclick = () => {
   if (!ED) return;
   ED.m.edits = { crop:ED.crop, shapes:ED.shapes };
   ED.m._th = null;                                  // 縮圖快取作廢，下次渲染才會帶上新標記
+  if (extSave){ const f = extSave, m = ED.m; extSave = null; closeEditor(); f(m);
+                toast('標記已套用'); return; }
   closeEditor(); save(); renderBlocks(); paintActive();
   toast('標記已套用');
 };
@@ -2136,7 +2160,7 @@ window.addEventListener('beforeunload', e => {
 
 render();
 return { get marks(){ return S.marks; }, get video(){ return S; },
-         holdInfo, shotOf, render, loadImg, guideHTML, guideTitle, addImages };
+         holdInfo, shotOf, render, loadImg, guideHTML, guideTitle, addImages, editImage };
 })();
 unown();</script>
 
@@ -2223,6 +2247,7 @@ function newStep(list){
           kind:list==='aft'?'ai':'manual', act:'exec', title:'', desc:'',
           dur:null, unit:'min',                        // 每一件要花多久
           batch:false,                                 // true＝整批做一次；false＝每次都做
+          orig:null, edits:null,                       // 原圖與標記（full 是合成後的結果）
           obj:'', iface:'',                            // 檔案／任務、在哪個介面做
           thumb:null, full:null};
 }
@@ -2472,6 +2497,20 @@ function renderList(list){
 }
 
 /* ── 兩版對照 ── */
+/* 對照頁是給人看結論的，不該還在那裡填表。基本資料改成一行總表。 */
+function paintMeta(){
+  const cmp = document.getElementById('pCmp').classList.contains('on');
+  const card = document.getElementById('metaCard');
+  card.classList.toggle('summary', cmp);
+  if(!cmp) return;
+  const F = FREQS.find(x=>x.v===(S.runFreq||'day'));
+  document.getElementById('metaView').innerHTML =
+    `<span><b>${esc(S.dept||'—')}</b></span><span class="sep">·</span>`
+   +`<span>${esc(S.title||'（尚未填流程題目）')}</span>`
+   +(S.author?`<span class="sep">·</span><span>${esc(S.author)}</span>`:'')
+   +`<span class="sep">·</span><span>每 ${S.runEvery||1} ${F?F.l:''}，`
+   +`${S.volume??'—'} 次，共 ${S.runHc||1} 人</span>`;
+}
 function curTab(){
   const p=document.querySelector('.tab.on').dataset.p;
   return p==='pAft'?'aft':p==='pCmp'?'cmp':'now';
@@ -2515,15 +2554,16 @@ function renderCmp(){
         :(pct>=0?'省下 ':'多出 ')+fmt(Math.abs(cv(rn.total-ra.total)))+' '+u.u}</div></div>`;
 
   /* 工時換成錢。主管看的是這三個數字，不是人時。 */
-  const money=mh=>mh==null?null:mh*60*CFG.rate;          // 人時 → 元
+  const money=mh=>mh==null?null:mh*60*CFG.rate;          // 月工時 → 元／月
+  const un=u.l.replace('每','');                          // 日／週／月
   const NT=v=>v==null?'—':Math.round(v).toLocaleString('en-US');
   const costNow=money(rn.total), costAft=money(ra.total);
   const save=(costNow!=null&&costAft!=null)?costNow-costAft:null;
   document.getElementById('cmp3').innerHTML=
-   `<div><div class="l">現況成本</div><div class="n">${NT(costNow)} <small>元/月</small></div>
-      <div class="s">${fmt(rn.total)} 人時/月 × ${CFG.rate} 元/分</div></div>
-    <div><div class="l">AI 導入後成本</div><div class="n">${NT(costAft)} <small>元/月</small></div>
-      <div class="s">${bothReady?fmt(ra.total)+' 人時/月（已含維護）':'兩版都填了才算得出來'}</div></div>
+   `<div><div class="l">現況成本</div><div class="n">${NT(cv(costNow))} <small>元/${un}</small></div>
+      <div class="s">以 ${CFG.rate} 元／分鐘換算</div></div>
+    <div><div class="l">AI 導入後成本</div><div class="n">${NT(cv(costAft))} <small>元/${un}</small></div>
+      <div class="s">${bothReady?'已含維護與審核':'兩版都填了才算得出來'}</div></div>
     <div><div class="l">一年省下</div>
       <div class="n" style="color:${save>0?'var(--ai)':'var(--ink3)'}">${NT(save==null?null:save*12)} <small>元</small></div>
       <div class="s">${save==null?'兩版都填了才算得出來':'每月 '+NT(save)+' 元'}</div></div>`;
@@ -2663,6 +2703,7 @@ function saveDraft(){
          stamp('草稿已存 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
     }catch(e){ saveFailed=true; stamp('⚠ 草稿太大無法自動儲存，請按「匯出交件檔」保存',true); }
   },500);
+  paintMeta();
 }
 function stamp(t,bad){const e=document.getElementById('saveState');e.textContent=t;e.style.color=bad?'#ffb4a8':'#8fa6c4';}
 function loadDraft(){
@@ -2758,7 +2799,7 @@ document.getElementById('mVol').addEventListener('input',e=>{
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===b.dataset.p));
-  renderSide();
+  paintMeta(); renderSide();
 });
 document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
   const k=b.dataset.add; const st=newStep(k); S[k].push(st); active=st.id; mark(); render();
@@ -2817,8 +2858,14 @@ document.addEventListener('click',e=>{
       arr.splice(i,1); active=null; mark(); render(); return; }
     if(e.target.dataset.rmimg){ st.thumb=null; st.full=null; mark(); render(); return; }
     if(e.target.closest('[data-thumb]')){
-      if(st.thumb){ const lb=document.getElementById('lb');
-        document.getElementById('lbImg').src=st.full||st.thumb; lb.classList.add('on'); }
+      if(st.thumb){
+        /* 跟製圖頁共用同一個標記編輯器。orig 是沒有標記的原圖，
+           full 是合成後的（匯出用），edits 留著才能再改。 */
+        MARK.editImage({ full: st.orig || st.full || st.thumb, edits: st.edits },
+          res => { st.orig = st.orig || st.full;
+                   st.edits = res.edits; st.full = res.full; st.thumb = res.thumb;
+                   mark(); render(); });
+      }
       else { activeList={list,id}; document.getElementById('fFilePick').click(); }
     }
   }
