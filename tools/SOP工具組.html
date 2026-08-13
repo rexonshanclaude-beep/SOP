@@ -2146,6 +2146,8 @@ const FORM = (() => {
    CONFIG ── 要調整選項或換算基準，直接改這一段就好
    ══════════════════════════════════════════════════════════════ */
 const CFG = {
+  rate: 14,                       // 工時換算金額：元／分鐘
+
   /* 步驟分類分兩層，兩層各自獨立、互不覆蓋。
      第一層｜誰出力：判準是「沒有人坐在電腦前，這步會不會自己跑完」。
        不會＝人工（人在 TIPTOP 一筆一筆查也算人工，因為人不動它就不會發生）；
@@ -2512,18 +2514,19 @@ function renderCmp(){
       <div class="s">${pct==null||!bothReady?'兩版都填了才算得出來'
         :(pct>=0?'省下 ':'多出 ')+fmt(Math.abs(cv(rn.total-ra.total)))+' '+u.u}</div></div>`;
 
-  /* 兩層分類拆出來的三個數字：這是分兩層唯一的理由，沒有它就只是多點一次滑鼠 */
-  const tot=(arr,f)=>arr.filter(f).reduce((t,st)=>{const m=mh(st); return t+(m==null?0:m);},0);
-  const auto  =tot(S.now,st=>st.kind==='manual'&&st.act==='exec');
-  const keep  =tot(S.now,st=>st.kind==='manual'&&(st.act==='judge'||st.act==='review'));
-  const upkeep=tot(S.aft,st=>st.act==='maint');
+  /* 工時換成錢。主管看的是這三個數字，不是人時。 */
+  const money=mh=>mh==null?null:mh*60*CFG.rate;          // 人時 → 元
+  const NT=v=>v==null?'—':Math.round(v).toLocaleString('en-US');
+  const costNow=money(rn.total), costAft=money(ra.total);
+  const save=(costNow!=null&&costAft!=null)?costNow-costAft:null;
   document.getElementById('cmp3').innerHTML=
-   `<div><div class="l">最該自動化</div><div class="n">${fmt(cv(auto))} <small>${u.u}</small></div>
-      <div class="s">現況裡「人工 · 執行」的工時</div></div>
-    <div><div class="l">導入後多半要保留</div><div class="n">${fmt(cv(keep))} <small>${u.u}</small></div>
-      <div class="s">現況裡「人工 · 判斷／審核」的工時</div></div>
-    <div><div class="l">效益要扣掉</div><div class="n" style="color:var(--a-maint)">${fmt(cv(upkeep))} <small>${u.u}</small></div>
-      <div class="s">導入後「維護」的工時${upkeep>0?'':'　·　一步都沒填，效益可能高估'}</div></div>`;
+   `<div><div class="l">現況成本</div><div class="n">${NT(costNow)} <small>元/月</small></div>
+      <div class="s">${fmt(rn.total)} 人時/月 × ${CFG.rate} 元/分</div></div>
+    <div><div class="l">AI 導入後成本</div><div class="n">${NT(costAft)} <small>元/月</small></div>
+      <div class="s">${bothReady?fmt(ra.total)+' 人時/月（已含維護）':'兩版都填了才算得出來'}</div></div>
+    <div><div class="l">一年省下</div>
+      <div class="n" style="color:${save>0?'var(--ai)':'var(--ink3)'}">${NT(save==null?null:save*12)} <small>元</small></div>
+      <div class="s">${save==null?'兩版都填了才算得出來':'每月 '+NT(save)+' 元'}</div></div>`;
 
   const colA=document.getElementById('cmpColA'), colB=document.getElementById('cmpColB');
   colA.innerHTML=S.now.length?S.now.map((st,i)=>cmpNode(st,i,'now',gmax)).join('')
