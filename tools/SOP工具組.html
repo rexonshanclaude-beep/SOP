@@ -2251,7 +2251,7 @@ function newStep(list){
   return {id:'s'+Math.random().toString(36).slice(2,9),
           kind:list==='aft'?'ai':'manual', act:'exec', title:'', desc:'',
           dur:null, unit:'min',                        // 每一件要花多久
-          batch:false,                                 // true＝整批做一次；false＝每次都做
+          qty:1,                                       // 這一步每一次處理幾份
           orig:null, edits:null,                       // 原圖與標記（full 是合成後的結果）
           obj:'', iface:'',                            // 檔案／任務、在哪個介面做
           thumb:null, full:null};
@@ -2307,18 +2307,19 @@ function adopt(d){
      默默改數字比報錯還糟。 */
   /* 舊檔的步驟各自帶件數。件數已經升到流程層級，步驟只留「逐件／整批」。
      判不準的（既不是 1 也不是總量）要講出來，那幾步的工時會變。 */
-  if(!('batch' in (d.now?.[0]||d.aft?.[0]||{}))){
+  /* 舊檔的件數是絕對數量；現在拆成「流程跑幾次 × 這一步每次幾份」。
+     用總次數去除，除不盡的要講出來，那幾步的工時會變。 */
+  if(o.volume){
     const V=Number(o.volume)||1, odd=[];
     o.now.concat(o.aft).forEach(x=>{
-      const q=Number(x.qty);
-      if(q>=V*0.99)      x.batch=false;          // 逐件
-      else if(q<=1)      x.batch=true;           // 整批一次
-      else { x.batch=false; odd.push(x.title||'(未命名)'); }
-      delete x.qty;
+      if(x.qty==null) { x.qty=1; return; }
+      const q=Number(x.qty)/V;
+      x.qty = Math.abs(q-Math.round(q))<0.01 ? Math.round(q) : +q.toFixed(3);
+      if(Math.abs(q-Math.round(q))>=0.01) odd.push(x.title||'(未命名)');
     });
     if(odd.length) setTimeout(()=>toast(
-      `有 ${odd.length} 個步驟原本的件數不是「全部」也不是「一次」（${odd.slice(0,2).join('、')}…），`
-      + `已一律當成每次都做 —— 請檢查工時`, true), 700);
+      `有 ${odd.length} 個步驟的件數除不盡總次數（${odd.slice(0,2).join('、')}…），`
+      + `份數已用小數表示 —— 請檢查工時`, true), 700);
   }
   if(!('runFreq' in d)){
     const all=o.now.concat(o.aft);
@@ -2359,9 +2360,9 @@ function secs(st){
   const u=UNITS.find(x=>x.v===st.unit)||UNITS[1];
   return Number(st.dur)*u.s;
 }
-/* 次數是整條流程的量。步驟只回答一件事：這一步每次都做，還是整批做一次。 */
+/* 次數是整條流程的量；份數是這一步每一次要處理幾份 */
 function vol(){ const v=Number(S.volume); return v>0?v:1; }
-function qtyOf(st){ return st.batch ? 1 : vol(); }
+function qtyOf(st){ const q=Number(st.qty); return (q>=0?q:1)*vol(); }
 function qty(st){                                 // 沒填＝算不出來；填 0 是合法的（等於這輪不做）
   if(st.qty==null||st.qty==='') return null;
   const n=Number(st.qty); return n>=0?n:null;
@@ -2451,11 +2452,9 @@ function stepHTML(st,i,list,arr,peak){
         <input class="i n" data-k="dur" type="number" min="0" step="any" value="${st.dur??''}" placeholder="0" title="一件要花多久">
         <select class="i s" data-k="unit" style="width:74px">${opt(UNITS,st.unit)}</select>
         <span class="dot">，</span>
-        <select class="i s" data-k="batch" style="width:112px">
-          <option value=""${st.batch?'':' selected'}>每次都做</option>
-          <option value="1"${st.batch?' selected':''}>整批一次</option>
-        </select>
-        <span class="fx">×${qtyOf(st)}</span>
+        <input class="i q" data-k="qty" type="number" min="0" step="any" value="${st.qty??1}"
+               title="這一步每一次要處理幾份">
+        <span class="fx">份</span>
       </div>
       <div class="r3">
         <span class="pair">
@@ -2854,7 +2853,6 @@ document.addEventListener('change',e=>{
     renderCmp(); renderSide(); renderChecks(); return; }
   if(k==='unit'){ st.unit=e.target.value; mark();
     refreshCalc(row.dataset.list); renderCmp(); renderSide(); renderChecks(); return; }
-  if(k==='batch'){ st.batch = e.target.value==='1'; mark(); render(); return; }
 });
 document.addEventListener('click',e=>{
   if(e.target.closest('.lb')){ document.getElementById('lb').classList.remove('on'); return; }
@@ -3012,8 +3010,9 @@ function sample(){
   d.volume=10;
   d.runEvery=1; d.runFreq='day'; d.runHc=1;          // 整條流程：每天跑一輪、一個人做
   /* 每天 176 件，逐件處理的步驟就填「共 176 件」；頻率與人數跟著整條流程走 */
-  const each=o=>Object.assign(newStep('now'),{batch:false,unit:'sec'},o);  // 每次都做
-  const once=o=>Object.assign(newStep('aft'),{batch:true,unit:'sec'},o);   // 整批一次
+  const each=o=>Object.assign(newStep('now'),{qty:1,unit:'sec'},o);
+  /* AI 後那幾步實際是一天做一次；這裡換算成「每一次的份額」，總量一樣 */
+  const once=o=>Object.assign(newStep('aft'),{qty:1,unit:'sec'},o);
   d.now=[
     each({kind:'manual',act:'exec',  title:'搜尋自主檢驗表空白資料',dur:10,
           desc:'於 QMS 逐一開啟四大類檢驗表，找出未填寫欄位',
@@ -3035,12 +3034,12 @@ function sample(){
     once({kind:'ai',    act:'exec',  title:'AI 自動掃描 QMS、判定分類、反查廠商與信箱',dur:0,
           desc:'每日排程觸發，四個查找動作一次完成',
           obj:'自主檢驗表 → 異常件清單',iface:'AI 工具'}),
-    once({kind:'manual',act:'review',title:'批次審核退件通知信並一次送出',dur:180,
-          desc:'AI 產生整批草稿，檢驗課人員審核批准後送出',
+    once({kind:'manual',act:'review',title:'批次審核退件通知信並一次送出',dur:18,
+          desc:'AI 產生整批草稿，檢驗課人員審核批准後送出（整批一天約 3 分鐘，換算成每次 18 秒）',
           obj:'AI 產生的退件通知草稿',iface:'Outlook / 信件'}),
     /* 實際是每週約 30 分鐘；整條流程以「每日」為單位，所以攤平成每日等值 */
-    once({kind:'manual',act:'maint', title:'維護判定規則與廠商對照表',dur:6.3,unit:'min',
-          desc:'每週檢視誤判案例、調整規則、更新過期信箱（每週約 30 分鐘，此處攤平為每日）',
+    once({kind:'manual',act:'maint', title:'維護判定規則與廠商對照表',dur:38,
+          desc:'每週檢視誤判案例、調整規則、更新過期信箱（每週約 30 分鐘，換算成每次 38 秒）',
           obj:'判定規則表、廠商信箱對照',iface:'Excel'})
   ];
   return d;
@@ -3178,7 +3177,8 @@ function FLT(){ if(fq()==='none')return '不定期';
   var n=ev(), u=PL[fq()]||''; return n===1?'每'+u:'每 '+n+' '+u; }
 function DUR(s){ return (s.dur==null||s.dur==='')?'—':s.dur+' '+(UL[s.unit]||''); }
 function VOL(){ var v=Number(DATA.volume); return v>0?v:1; }
-function QTY(s){ return s.batch ? 1 : VOL(); }
+function VOLQ(){ var v=Number(DATA.volume); return v>0?v:1; }
+function QTY(s){ var q=Number(s.qty); return (q>=0?q:1)*VOLQ(); }
 function mh(s){ if(s.dur==null||s.dur==='')return null;
   return Number(s.dur)*(UN[s.unit]||60)*QTY(s)*hcOf()*occ()/3600; }
 function f(n){ return n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
@@ -3212,7 +3212,7 @@ function node(s,i,isAft,pk,showPct,colTot){
    '<span class="tg2 a-'+s.act+'">'+(AL[s.act]||'')+'</span>'+
    (s.obj?'<span class="p o">'+esc(s.obj)+'</span>':'')+
    (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
-   '<span class="p'+(hot?' r':'')+'">每次 '+DUR(s)+' · '+(s.batch?'整批一次':'每次都做（'+VOL()+' 次）')+' · '+
+   '<span class="p'+(hot?' r':'')+'">每次 '+DUR(s)+' · '+(Number(s.qty)||1)+' 份 · '+
      FLT()+' · '+hcOf()+' 人</span>'+
    '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
      (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
