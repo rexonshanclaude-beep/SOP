@@ -328,6 +328,16 @@ button,input,select,textarea{font-family:inherit}
 .app-mark .cols button{width:24px;height:24px;border-radius:6px;border:2px solid #fff;cursor:pointer;
   box-shadow:0 0 0 1px var(--line)}
 .app-mark .cols button.on{box-shadow:0 0 0 2px var(--ink)}
+.app-mark .emojibar{display:none;flex-wrap:wrap;gap:5px;padding:8px 2px 2px}
+.app-mark .emojibar.on{display:flex}
+.app-mark .emojibar button{appearance:none;cursor:pointer;font-family:inherit;
+  width:34px;height:34px;font-size:19px;line-height:1;border-radius:8px;
+  border:1px solid var(--line);background:#fff;padding:0}
+.app-mark .emojibar button:hover{border-color:var(--brand);background:#f5f8ff}
+.app-mark .emojibar button.on{border-color:var(--brand);box-shadow:0 0 0 2px rgba(47,109,246,.25)}
+.app-mark .zoomg{display:inline-flex;align-items:center;gap:2px}
+.app-mark .zoomg .zlab{min-width:54px;text-align:center;cursor:default;background:none;
+  border-color:transparent;color:var(--ink3);font-variant-numeric:tabular-nums}
 .app-mark .edcanvas{background:#12202e;border-radius:9px;padding:10px;display:flex;align-items:center;justify-content:center;
   overflow:auto;min-height:0}
 .app-mark .edcanvas canvas{max-width:100%;display:block;cursor:crosshair;border-radius:4px;
@@ -893,18 +903,24 @@ button,input,select,textarea{font-family:inherit}
     <div class="dbody edwrap">
       <div class="edtools">
         <button class="tool" data-tool="arrow">↗ 箭頭</button>
-        <button class="tool" data-tool="hand">☝ 手指</button>
-        <button class="tool" data-tool="cursor">➤ 游標</button>
+        <button class="tool" data-tool="emoji">🙂 貼圖</button>
         <button class="tool" data-tool="badge">① 標號</button>
         <span class="tdiv"></span>
         <button class="tool" data-tool="rect">▭ 框選</button>
         <button class="tool" data-tool="mask">▓ 遮蔽</button>
         <button class="tool" data-tool="crop">⛶ 放大擷取</button>
         <div class="cols" id="edCols"></div>
-        <button class="tool" id="edUndo" style="margin-left:auto">↶ 復原</button>
+        <span class="zoomg" style="margin-left:auto">
+          <button class="tool" id="edZoomOut" title="縮小">−</button>
+          <button class="tool zlab" id="edZoom">100%</button>
+          <button class="tool" id="edZoomIn" title="放大">＋</button>
+          <button class="tool" id="edZoomFit" title="整張塞進畫面">符合畫面</button>
+        </span>
+        <button class="tool" id="edUndo">↶ 復原</button>
         <button class="tool" id="edUncrop" style="display:none">取消擷取</button>
         <button class="tool" id="edReset">清除</button>
       </div>
+      <div class="emojibar" id="edEmojis"></div>
       <div class="edcanvas"><canvas id="edCanvas"></canvas></div>
       <div class="edhint" id="edHint"></div>
     </div>
@@ -1084,7 +1100,16 @@ function drawShapes(cx, shapes, W, H, ox, oy, scale){
     } else if (s.type === 'mask'){
       cx.fillStyle = '#16202b';
       cx.fillRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
-    } else if (s.type === 'hand' || s.type === 'cursor'){
+    } else if (s.type === 'emoji'){
+      const size = Math.max(Math.hypot(x2-x1, y2-y1)*1.6, base*0.13);
+      cx.save();
+      cx.font = `${Math.round(size)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.shadowColor = 'rgba(255,255,255,.95)'; cx.shadowBlur = Math.max(3, size*0.10);
+      cx.fillText(s.ch || '👆', x1, y1);
+      cx.shadowBlur = 0; cx.fillText(s.ch || '👆', x1, y1);   // 疊一次讓顏色實一點
+      cx.restore();
+    } else if (s.type === 'hand' || s.type === 'cursor'){      // 舊檔相容
       glyph(cx, s.type, x1, y1, Math.max(Math.hypot(x2-x1, y2-y1), base*0.13), s.color);
     } else if (s.type === 'badge'){
       const r = Math.max(Math.hypot(x2-x1, y2-y1), base*0.055);
@@ -1617,21 +1642,45 @@ function openEditor(m, external){
     `<button data-c="${c}" style="background:${c}" class="${c===ED.color?'on':''}"></button>`).join('');
   $('mEd').classList.add('on');
   edTool('arrow');
-  /* 畫布用顯示尺寸即可，座標存的是 0~1，匯出時才換算回原圖解析度 */
-  const cv = $('edCanvas');
-  const maxW = Math.min(m.img.width, Math.max(560, window.innerWidth - 200));
-  cv.width = maxW; cv.height = Math.round(m.img.height * maxW / m.img.width);
-  edPaint();
+  ED.zoom = 0;                     // 0＝符合畫面，其餘是實際倍率
+  fitCanvas(); edPaint();
 }
+/* 預設整張看得到（寬與高都要塞得下），不要一開啟就是被切掉的放大狀態。
+   座標存的是 0~1，畫布縮放不影響標記位置。 */
+function fitCanvas(){
+  if (!ED) return;
+  const m = ED.m, box = $('edCanvas').parentElement.getBoundingClientRect();
+  const availW = Math.max(240, box.width  - 24);
+  const availH = Math.max(180, box.height - 24);
+  const k = ED.zoom > 0 ? ED.zoom
+          : Math.min(availW / m.img.width, availH / m.img.height, 1);
+  const cv = $('edCanvas');
+  cv.width  = Math.max(80, Math.round(m.img.width  * k));
+  cv.height = Math.max(60, Math.round(m.img.height * k));
+  const z = $('edZoom'); if (z) z.textContent = Math.round(k * 100) + '%';
+}
+function edZoomBy(f){
+  if (!ED) return;
+  ED.zoom = Math.min(4, Math.max(0.1, ($('edCanvas').width / ED.m.img.width) * f));
+  fitCanvas(); edPaint();
+}
+window.addEventListener('resize', () => { if (ED && !ED.zoom){ fitCanvas(); edPaint(); } });
 function closeEditor(){ $('mEd').classList.remove('on'); ED = null; }
-const POINT = ['hand','cursor','badge'];         // 這幾種是「點一下就放」，拖曳只是調大小
+const POINT = ['emoji','badge'];                 // 這幾種是「點一下就放」，拖曳只是調大小
+const EMOJIS = ['👆','👉','👈','✋','✅','❌','⚠️','❓','⭐','🔍','📌','✏️','🖱️','⏰','💡','🚫'];
 function edTool(t){
   ED.tool = t;
+  const bar = $('edEmojis');
+  bar.classList.toggle('on', t === 'emoji');
+  if (t === 'emoji' && !bar.dataset.built){
+    bar.innerHTML = EMOJIS.map(e =>
+      `<button data-e="${e}" class="${e===(ED.emoji||EMOJIS[0])?'on':''}">${e}</button>`).join('');
+    bar.dataset.built = '1';
+  }
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('edHint').innerHTML = ({
     arrow : '<b>拖曳</b>畫箭頭 —— 從空白處拉向要看的地方。',
-    hand  : '<b>點一下</b>放一隻手指，指尖落在你點的位置。想大一點就按住往外拖。',
-    cursor: '<b>點一下</b>放一個滑鼠游標，尖端落在你點的位置。按住往外拖可放大。',
+    emoji : '先選一個貼圖，再<b>點一下</b>畫面貼上去。按住往外拖可以調大小。',
     badge : '<b>點一下</b>放一個編號，會自動 1、2、3 排下去 —— 同一步裡的操作順序用這個標。',
     rect  : '<b>拖曳</b>框出要注意的區域。',
     mask  : '拖曳框出要<b>蓋掉</b>的地方。客戶名稱、報價、個資在送出前用這個遮起來。',
@@ -1652,6 +1701,7 @@ function edPaint(){
   const shapes = ED.shapes.concat(
     live && ED.tool !== 'crop'
       ? [{type:ED.tool, x1:ED.p0.x, y1:ED.p0.y, x2:ED.p1.x, y2:ED.p1.y, color:ED.color,
+          ch:ED.emoji || EMOJIS[0],
           n:ED.shapes.filter(x => x.type === 'badge').length + 1}] : []);
   drawShapes(cx, shapes, cv.width, cv.height, 0, 0, 1);
   const crop = (live && ED.tool === 'crop')
@@ -1685,6 +1735,7 @@ $('edCanvas').addEventListener('pointerup', () => {
   if (POINT.includes(ED.tool)){                    // 點一下就放，不需要拖出距離
     const s = { type:ED.tool, x1:a.x, y1:a.y, x2:b.x, y2:b.y, color:ED.color };
     if (ED.tool === 'badge') s.n = ED.shapes.filter(x => x.type === 'badge').length + 1;
+    if (ED.tool === 'emoji') s.ch = ED.emoji || EMOJIS[0];
     ED.shapes.push(s);
   } else if (far){
     if (ED.tool === 'crop')
@@ -1700,6 +1751,14 @@ $('edCols').addEventListener('click', e => {
   ED.color = b.dataset.c;
   $('edCols').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
 });
+$('edEmojis').onclick = e => {
+  const b = e.target.closest('[data-e]'); if (!b || !ED) return;
+  ED.emoji = b.dataset.e;
+  $('edEmojis').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+};
+$('edZoomIn').onclick  = () => edZoomBy(1.25);
+$('edZoomOut').onclick = () => edZoomBy(0.8);
+$('edZoomFit').onclick = () => { if (!ED) return; ED.zoom = 0; fitCanvas(); edPaint(); };
 $('edUndo').onclick    = () => { if (!ED) return; ED.shapes.pop(); edPaint(); };
 $('edUncrop').onclick  = () => { if (!ED) return; ED.crop = null; edPaint(); };
 $('edReset').onclick   = () => { if (!ED) return; ED.shapes = []; ED.crop = null; edPaint(); };
@@ -1820,7 +1879,7 @@ function buildDocs(){
                 String(now.getDate()).padStart(2,'0') + ' ' +
                 String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   const ro = reordered();
-  const L = {arrow:'箭頭', hand:'手指', cursor:'游標', badge:'編號', rect:'框選', mask:'遮蔽'};
+  const L = {arrow:'箭頭', emoji:'貼圖', hand:'手指', cursor:'游標', badge:'編號', rect:'框選', mask:'遮蔽'};
   const kindOf = m => {
     const s = (m.edits && m.edits.shapes) || [];
     const out = Object.keys(L).filter(k => s.some(x => x.type === k)).map(k => L[k]);
