@@ -803,9 +803,10 @@ button,input,select,textarea{font-family:inherit}
               <input class="i n2" id="mRunEvery" type="number" min="0" step="any" value="1">
               <select class="i" id="mRunFreq"></select>
               <span class="dot">，</span>
-              <input class="i n2" id="mVol" type="number" min="0" step="1" placeholder="10">
-              <span class="fx">件</span>
+              <input class="i n2" id="mVol" type="number" min="0" step="1" placeholder="176">
+              <span class="fx">次</span>
               <span class="dot">，</span>
+              <span class="fx">共</span>
               <input class="i n2" id="mRunHc" type="number" min="1" step="1" value="1">
               <span class="fx">人</span>
             </div></div>
@@ -818,7 +819,7 @@ button,input,select,textarea{font-family:inherit}
           <div class="chead"><div><h3>現況流程 <span class="qm" tabindex="0">?</span><span class="qtip">
               <b>誰出力</b>　沒有人坐在電腦前，這步會自己跑完嗎？不會＝人工，會＝系統或 AI<br>
               <b>在做什麼</b>　判斷＝決定走哪條路；審核＝把關放行；維護＝為了讓流程能繼續跑（優先於其他）<br>
-              <b>每件</b>　做一件要多久　　<b>共 N 件</b>　這一輪重複幾次，預設 1<br>
+              <b>每次</b>　做一次要多久　　<b>每次都做／整批一次</b>　這一步跟著每一次跑，還是整批做一次<br>
               <b>檔案／任務</b>　在處理什麼東西　　<b>介面</b>　在哪裡做
             </span></h3><div class="sub">現在實際怎麼做，一步一步填</div></div>
             <div style="font-size:12px;color:var(--ink3)">點步驟後可直接 <b>Ctrl+V</b> 貼上截圖</div></div>
@@ -833,7 +834,7 @@ button,input,select,textarea{font-family:inherit}
           <div class="chead"><div><h3>AI 導入後流程 <span class="qm" tabindex="0">?</span><span class="qtip">
               <b>誰出力</b>　沒有人坐在電腦前，這步會自己跑完嗎？不會＝人工，會＝系統或 AI<br>
               <b>在做什麼</b>　判斷＝決定走哪條路；審核＝把關放行；維護＝為了讓流程能繼續跑（優先於其他）<br>
-              <b>每件</b>　做一件要多久　　<b>共 N 件</b>　這一輪重複幾次，預設 1<br>
+              <b>每次</b>　做一次要多久　　<b>每次都做／整批一次</b>　這一步跟著每一次跑，還是整批做一次<br>
               維護與審核一定要有，不然效益會高估
             </span></h3>
             <div class="sub">未來怎麼做，一樣一步一步填 —— 兩條流程各自獨立，不必對應</div></div></div>
@@ -2219,7 +2220,7 @@ function newStep(list){
   return {id:'s'+Math.random().toString(36).slice(2,9),
           kind:list==='aft'?'ai':'manual', act:'exec', title:'', desc:'',
           dur:null, unit:'min',                        // 每一件要花多久
-          batch:false,                                 // true＝整批做一次；false＝每件都做
+          batch:false,                                 // true＝整批做一次；false＝每次都做
           obj:'', iface:'',                            // 檔案／任務、在哪個介面做
           thumb:null, full:null};
 }
@@ -2285,7 +2286,7 @@ function adopt(d){
     });
     if(odd.length) setTimeout(()=>toast(
       `有 ${odd.length} 個步驟原本的件數不是「全部」也不是「一次」（${odd.slice(0,2).join('、')}…），`
-      + `已一律當成每件都做 —— 請檢查工時`, true), 700);
+      + `已一律當成每次都做 —— 請檢查工時`, true), 700);
   }
   if(!('runFreq' in d)){
     const all=o.now.concat(o.aft);
@@ -2310,8 +2311,9 @@ function adopt(d){
 }
 
 /* ── 工時引擎 ──
-   一句話讀完一個步驟：每件 dur unit，共 qty 件，每 every freq 一次，hc 人處理。
-     一輪要花的秒數 = 每件秒數 × 件數 × 人數
+   一句話讀完整條流程：每 every freq 跑 volume 次，共 hc 人。
+   一個步驟只回答：每次要花多久（dur unit），以及每次都做還是整批一次。
+     一輪要花的秒數 = 每次秒數 × 次數（整批一次就是 1）× 人數
      一個月做幾輪   = 該週期的月次數 ÷ every（不定期 = 0，不計入）
      月人時         = 一輪秒數 × 月輪數 ÷ 3600
    畫面上再依「顯示單位」除以每月工作日數／週數                        */
@@ -2325,7 +2327,7 @@ function secs(st){
   const u=UNITS.find(x=>x.v===st.unit)||UNITS[1];
   return Number(st.dur)*u.s;
 }
-/* 件數是整條流程的量。步驟只回答一件事：這一步每件都要做，還是整批做一次。 */
+/* 次數是整條流程的量。步驟只回答一件事：這一步每次都做，還是整批做一次。 */
 function vol(){ const v=Number(S.volume); return v>0?v:1; }
 function qtyOf(st){ return st.batch ? 1 : vol(); }
 function qty(st){                                 // 沒填＝算不出來；填 0 是合法的（等於這輪不做）
@@ -2413,12 +2415,12 @@ function stepHTML(st,i,list,arr,peak){
         <button class="xbtn" data-del="1" title="刪除這個步驟">✕</button>
       </div>
       <div class="r2">
-        <span class="fx">每件</span>
+        <span class="fx">每次</span>
         <input class="i n" data-k="dur" type="number" min="0" step="any" value="${st.dur??''}" placeholder="0" title="一件要花多久">
         <select class="i s" data-k="unit" style="width:74px">${opt(UNITS,st.unit)}</select>
         <span class="dot">，</span>
         <select class="i s" data-k="batch" style="width:112px">
-          <option value=""${st.batch?'':' selected'}>每件都做</option>
+          <option value=""${st.batch?'':' selected'}>每次都做</option>
           <option value="1"${st.batch?' selected':''}>整批一次</option>
         </select>
         <span class="fx">×${qtyOf(st)}</span>
@@ -2949,7 +2951,7 @@ function sample(){
   d.volume=176;
   d.runEvery=1; d.runFreq='day'; d.runHc=1;          // 整條流程：每天跑一輪、一個人做
   /* 每天 176 件，逐件處理的步驟就填「共 176 件」；頻率與人數跟著整條流程走 */
-  const each=o=>Object.assign(newStep('now'),{batch:false,unit:'sec'},o);  // 每件都做
+  const each=o=>Object.assign(newStep('now'),{batch:false,unit:'sec'},o);  // 每次都做
   const once=o=>Object.assign(newStep('aft'),{batch:true,unit:'sec'},o);   // 整批一次
   d.now=[
     each({kind:'manual',act:'exec',  title:'搜尋自主檢驗表空白資料',dur:10,
@@ -3149,7 +3151,7 @@ function node(s,i,isAft,pk,showPct,colTot){
    '<span class="tg2 a-'+s.act+'">'+(AL[s.act]||'')+'</span>'+
    (s.obj?'<span class="p o">'+esc(s.obj)+'</span>':'')+
    (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
-   '<span class="p'+(hot?' r':'')+'">每件 '+DUR(s)+' · '+(s.batch?'整批一次':'每件都做（'+VOL()+'）')+' · '+
+   '<span class="p'+(hot?' r':'')+'">每次 '+DUR(s)+' · '+(s.batch?'整批一次':'每次都做（'+VOL()+' 次）')+' · '+
      FLT()+' · '+hcOf()+' 人</span>'+
    '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
      (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
@@ -3300,8 +3302,8 @@ function handoffNote(n, noTime){
   }
   b.innerHTML = '<b>已帶進 ' + n + ' 個步驟。</b>'
     + (noTime
-        ? '圖片沒有時間軸，所以<b>每件時間、件數、頻率都是空的</b> —— 這三欄要你自己填，或交給 AI 一起問。'
-        : '每件時間是錄影實測的，但<b>件數與頻率錄影裡看不出來</b> —— 這兩欄現在是空的。')
+        ? '圖片沒有時間軸，所以<b>每次要花多久是空的</b> —— 這欄和上面的「這條流程」要你自己填，或交給 AI 一起問。'
+        : '每次時間是錄影實測的，但<b>跑幾次、多久跑一輪、幾個人，錄影裡看不出來</b> —— 上面的「這條流程」要你自己填。')
     + '填了才算得出工時。'
     + '<button class="hox" onclick="this.parentNode.remove()">知道了</button>';
 }
