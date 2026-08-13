@@ -2948,7 +2948,7 @@ function busy(on){ document.getElementById('fBusy').classList.toggle('on',on); }
 function sample(){
   const d=blank();
   d.dept='品質保證部'; d.title='供應商自主檢驗表異常稽核與退件通知';
-  d.volume=176;
+  d.volume=10;
   d.runEvery=1; d.runFreq='day'; d.runHc=1;          // 整條流程：每天跑一輪、一個人做
   /* 每天 176 件，逐件處理的步驟就填「共 176 件」；頻率與人數跟著整條流程走 */
   const each=o=>Object.assign(newStep('now'),{batch:false,unit:'sec'},o);  // 每次都做
