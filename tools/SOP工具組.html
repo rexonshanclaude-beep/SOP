@@ -2561,14 +2561,20 @@ function renderCmp(){
   /* 工時換成錢。主管看的是這三個數字，不是人時。 */
   const money=mh=>mh==null?null:mh*60*CFG.rate;          // 月工時 → 元／月
   const un=u.l.replace('每','');                          // 日／週／月
+  /* 上面的工時卡是四捨五入過的，這裡要給算得回去的精度，
+     不然使用者拿 0.74 × 60 × 14 一算對不上，會以為工具算錯 */
+  const f3=v=>v==null?'—':(v>=100?Math.round(v).toLocaleString()
+            :v>=10?v.toFixed(2):v.toFixed(3));
   const NT=v=>v==null?'—':Math.round(v).toLocaleString('en-US');
   const costNow=money(rn.total), costAft=money(ra.total);
   const save=(costNow!=null&&costAft!=null)?costNow-costAft:null;
   document.getElementById('cmp3').innerHTML=
    `<div><div class="l">現況成本</div><div class="n">${NT(cv(costNow))} <small>元/${un}</small></div>
-      <div class="s">以 ${CFG.rate} 元／分鐘換算</div></div>
+      <div class="s">${f3(cv(rn.total))} 小時 × 60 分 × ${CFG.rate} 元</div></div>
     <div><div class="l">AI 導入後成本</div><div class="n">${NT(cv(costAft))} <small>元/${un}</small></div>
-      <div class="s">${bothReady?'已含維護與審核':'兩版都填了才算得出來'}</div></div>
+      <div class="s">${bothReady
+        ? f3(cv(ra.total))+' 小時 × 60 分 × '+CFG.rate+' 元（已含維護）'
+        : '兩版都填了才算得出來'}</div></div>
     <div><div class="l">一年省下</div>
       <div class="n" style="color:${save>0?'var(--ai)':'var(--ink3)'}">${NT(save==null?null:save*12)} <small>元</small></div>
       <div class="s">${save==null?'兩版都填了才算得出來':'每月 '+NT(save)+' 元'}</div></div>`;
