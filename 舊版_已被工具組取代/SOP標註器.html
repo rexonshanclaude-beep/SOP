@@ -1,0 +1,1298 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP 錄影標註器</title>
+<style>
+:root{
+  --bg:#eef1f5;--panel:#fff;--ink:#16202b;--ink2:#5a6b7c;--ink3:#8b9aa9;
+  --line:#dfe5ec;--line2:#eef2f6;
+  --brand:#2f5fd0;--brand-soft:#eaf0fd;
+  --ai:#1f9d6b;--ai-soft:#e7f6ef;
+  --warn:#d4483b;--warn-soft:#fdecea;
+  --amber:#b07d0a;--amber-soft:#fdf5e2;
+  --r:10px;--font:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+h1,h2,h3,h4{margin:0;font-weight:700}
+button,input,select,textarea{font-family:inherit}
+
+/* 標頭 */
+.top{background:linear-gradient(160deg,#1c2a3c 0%,#2a4166 100%);color:#fff;padding:11px 18px;
+  display:flex;align-items:center;gap:13px;flex-wrap:wrap;flex:none}
+.top h1{font-size:16px;white-space:nowrap}
+.top .st{font-size:12px;color:#8fa6c4;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .tools{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.tb{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.2);color:#dce6f4;
+  font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.tb:hover{background:rgba(255,255,255,.2);color:#fff}
+.tb.go{background:#fff;color:#1c2a3c;border-color:#fff;font-weight:700;padding:6px 16px}
+.tb.go:hover{background:#e8eef7}
+.tb:disabled{opacity:.4;cursor:not-allowed}
+.tb .n{display:inline-block;min-width:17px;padding:0 5px;border-radius:99px;background:rgba(28,42,60,.16);
+  font-size:11px;margin-left:6px;vertical-align:1px}
+
+/* 版面：左標註列表、右主畫面 */
+.app{display:flex;height:calc(100vh - 52px);align-items:stretch}
+.left{width:388px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-width:0}
+/* 右欄現在只剩「畫面 + 時間軸」，畫面就該把剩下的高度全部吃掉 */
+.right{flex:1;min-width:0;display:flex;flex-direction:column;padding:14px 16px;gap:12px;overflow:hidden}
+@media(max-width:960px){
+  body{overflow:auto}
+  .app{flex-direction:column-reverse;height:auto}
+  .left{width:auto;border-right:0;border-top:1px solid var(--line)}
+  .right{overflow:visible}
+  .stage{flex:none !important}
+  .stage video{max-height:56vh}
+}
+
+/* ── 左：標註列表 ── */
+.lhead{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;flex:none}
+.lhead h3{font-size:14px}
+.lhead .n{font-size:11.5px;font-weight:700;background:var(--brand-soft);color:var(--brand);
+  padding:1px 9px;border-radius:99px}
+.lhead .sortbtn{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--ink3);background:none;
+  border:1px solid var(--line);border-radius:7px;padding:4px 9px;cursor:pointer;white-space:nowrap}
+.lhead .sortbtn:hover:not(:disabled){border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.lhead .sortbtn:disabled{opacity:.4;cursor:not-allowed}
+.reorder{margin:10px 14px 0;padding:7px 11px;background:var(--amber-soft);border:1px solid #eddda8;
+  border-radius:8px;font-size:11.5px;color:#7a5c00;line-height:1.5;display:none}
+.reorder.on{display:block}
+.blocks{flex:1;overflow:auto;padding:10px 12px 24px;min-height:120px}
+.blk{border:1px solid var(--line2);background:#fcfdfe;border-radius:9px;padding:9px;margin-bottom:8px;
+  display:flex;flex-direction:column;gap:7px}
+.blk:hover{border-color:#cdd8e4;background:#fff}
+.blk.act{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);background:#fff}
+.blk.dragging{opacity:.35}
+.blk.dropbefore{box-shadow:inset 0 3px 0 0 var(--brand)}
+.blk.dropafter{box-shadow:inset 0 -3px 0 0 var(--brand)}
+body.dragging-on{user-select:none;cursor:grabbing}
+.brow{display:flex;gap:9px;align-items:flex-start}
+.bnum{width:23px;height:23px;flex:none;border-radius:6px;background:var(--ink);color:#fff;
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  cursor:grab;user-select:none;touch-action:none;margin-top:1px}
+.bnum:hover{box-shadow:0 0 0 3px var(--brand-soft)}
+.bnum:active{cursor:grabbing}
+.bth{width:136px;height:77px;flex:none;border-radius:6px;overflow:hidden;border:1px solid var(--line);
+  background:#dde3ea;position:relative;cursor:zoom-in}
+.bth:hover{border-color:var(--brand)}
+/* contain 不是 cover：寧可留黑邊，也要讓縮圖等於你標到的整個畫面。
+   用 cover 會把上下（或左右）裁掉，看起來就跟當初標的不一樣。 */
+.bth img{width:100%;height:100%;object-fit:contain;display:block}
+.bth .miss{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;color:var(--ink3);text-align:center;padding:4px;line-height:1.35}
+.bth .edited{position:absolute;left:3px;bottom:3px;background:rgba(47,95,208,.92);color:#fff;
+  font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:99px;letter-spacing:.02em}
+.bth .pen{position:absolute;right:3px;bottom:3px;background:rgba(13,20,29,.72);color:#fff;
+  font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:99px;opacity:0;transition:.15s}
+.bth:hover .pen{opacity:1}
+.bmeta{flex:1;min-width:0}
+.btime{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bacts{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.mini{border:1px solid var(--line);background:#fff;color:var(--ink3);font-size:10.5px;font-weight:600;
+  padding:2px 7px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.mini:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.mini.del:hover{border-color:#f0c0ba;color:var(--warn);background:var(--warn-soft)}
+textarea.note{border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12.5px;color:var(--ink2);
+  width:100%;resize:vertical;min-height:34px;overflow:hidden;line-height:1.5;outline:none;display:block}
+textarea.note:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);color:var(--ink)}
+.lempty{padding:30px 18px;text-align:center;color:var(--ink3);font-size:12.5px;line-height:1.9}
+.lempty b{color:var(--ink2)}
+
+/* ── 右：主畫面 ── */
+.stage{background:#0d141d;border-radius:var(--r);overflow:hidden;position:relative;
+  flex:1 1 auto;min-height:220px;display:flex;align-items:center;justify-content:center}
+/* contain：不裁畫面。錄影是 16:10、4:3 或直式視窗時，用 cover 會把邊切掉，
+   你標到的跟你看到的就對不起來了。 */
+.stage video{width:100%;height:100%;object-fit:contain;display:block;background:#0d141d}
+.drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:9px;color:#9fb3cd;font-size:14px;text-align:center;padding:26px;cursor:pointer}
+.drop.hide{display:none}
+.drop b{color:#fff;font-size:17px;font-weight:700}
+.drop small{font-size:12px;color:#7e93ad;line-height:1.7}
+.stage.over{outline:3px solid var(--brand);outline-offset:-3px}
+.hud{position:absolute;left:12px;top:12px;background:rgba(13,20,29,.72);color:#fff;font-size:12px;
+  font-weight:700;padding:3px 10px;border-radius:7px;font-variant-numeric:tabular-nums;display:none}
+.hud.on{display:block}
+
+/* 時間軸 */
+.tlwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px 10px;flex:none}
+.tl{position:relative;height:56px;background:#f2f5f8;border:1px solid var(--line);border-radius:8px;
+  cursor:pointer;overflow:hidden;touch-action:none}
+.tl .played{position:absolute;left:0;top:0;bottom:0;background:var(--brand-soft);pointer-events:none}
+.tl .tick{position:absolute;top:0;bottom:0;width:1px;background:#e2e8ef;pointer-events:none}
+.tl .tick i{position:absolute;bottom:2px;left:3px;font-style:normal;font-size:9.5px;color:var(--ink3);
+  font-variant-numeric:tabular-nums}
+.tl .head{position:absolute;top:0;bottom:0;width:2px;background:var(--warn);pointer-events:none;z-index:4}
+.tl .head::after{content:'';position:absolute;top:-1px;left:-4px;border:5px solid transparent;
+  border-top-color:var(--warn);border-bottom:0}
+.pin{position:absolute;top:6px;bottom:6px;width:2px;background:var(--ink);z-index:3;touch-action:none;
+  cursor:grab;margin-left:-1px}
+.pin:active{cursor:grabbing}
+.pin b{position:absolute;top:-2px;left:50%;transform:translateX(-50%);min-width:19px;height:19px;padding:0 4px;
+  border-radius:5px;background:var(--ink);color:#fff;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center}
+.pin.act{background:var(--brand)}
+.pin.act b{background:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.pin:hover b{background:var(--brand)}
+.tlbar{display:flex;align-items:center;gap:9px;margin-top:9px;flex-wrap:wrap}
+.pbtn{border:1px solid var(--line);background:#fff;color:var(--ink);font-size:13px;font-weight:700;
+  padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.pbtn:hover:not(:disabled){border-color:#cdd8e4;background:#f7f9fc}
+.pbtn:disabled{opacity:.4;cursor:not-allowed}
+.pbtn.mark{background:var(--brand);border-color:var(--brand);color:#fff;padding:7px 17px}
+.pbtn.mark:hover:not(:disabled){filter:brightness(1.08);background:var(--brand)}
+.clock{font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap}
+.clock span{color:var(--ink3);font-weight:600;font-size:12px}
+.seg{display:inline-flex;background:#eef2f6;border-radius:8px;padding:2px;gap:2px;margin-left:auto}
+.seg button{border:0;background:none;font-size:11.5px;font-weight:700;color:var(--ink3);
+  padding:4px 10px;border-radius:6px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,32,45,.13)}
+.chk{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink3);white-space:nowrap;cursor:pointer}
+.keys{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--ink3);margin-top:9px;
+  padding-top:9px;border-top:1px solid var(--line2)}
+.keys kbd{font-family:inherit;font-size:10.5px;font-weight:700;background:#f1f4f8;border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:5px;padding:0 5px;color:var(--ink2)}
+
+/* ── 彈窗 ── */
+.mask{position:fixed;inset:0;background:rgba(15,22,32,.72);display:none;align-items:center;justify-content:center;
+  z-index:70;padding:26px}
+.mask.on{display:flex}
+.dlg{background:var(--panel);border-radius:12px;max-width:520px;width:100%;overflow:hidden;
+  box-shadow:0 20px 60px rgba(10,16,24,.45);max-height:100%;display:flex;flex-direction:column}
+.dlg.wide{max-width:1180px}
+.dhead{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex:none}
+.dhead h3{font-size:16px}
+.dhead .sub{font-size:12px;color:var(--ink3);font-weight:400}
+.dhead .x{margin-left:auto;border:0;background:none;font-size:24px;line-height:1;color:var(--ink3);
+  cursor:pointer;padding:0 4px}
+.dhead .x:hover{color:var(--ink)}
+.dbody{padding:18px 20px;overflow:auto}
+.dfoot{padding:13px 20px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:center;
+  background:#fafbfd;flex:none;flex-wrap:wrap}
+.btn{padding:10px 18px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;
+  font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){filter:brightness(1.08)}
+.btn:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.btn.ghost{background:#fff;color:var(--brand)}
+.btn.plain{background:#fff;color:var(--ink2);border-color:var(--line)}
+.btn.plain:hover{border-color:#cdd8e4;background:#f7f9fc}
+.note{background:var(--brand-soft);border-left:3px solid var(--brand);padding:11px 14px;border-radius:0 8px 8px 0;
+  font-size:12.5px;color:#2b4270;line-height:1.7}
+.note b{color:var(--brand)}
+.note code{background:#fff;border:1px solid #cfdcf5;border-radius:4px;padding:0 5px;font-size:11.5px}
+.note.amber{background:var(--amber-soft);border-color:var(--amber);color:#7a5c00}
+.note.amber b{color:#5c4500}
+.big2{display:flex;gap:11px;flex-wrap:wrap;margin-bottom:14px}
+.big2 button{flex:1;min-width:180px;text-align:left;padding:14px 16px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--line);background:#fff}
+.big2 button:hover:not(:disabled){border-color:var(--brand);background:var(--brand-soft)}
+.big2 button:disabled{opacity:.45;cursor:not-allowed}
+.big2 b{display:block;font-size:14px;color:var(--ink)}
+.big2 small{display:block;font-size:11.5px;color:var(--ink3);line-height:1.55;margin-top:3px}
+.big2 .rec{border-color:var(--brand);background:var(--brand-soft)}
+.sumline{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-bottom:14px;
+  padding:10px 13px;background:#f7f9fc;border:1px solid var(--line2);border-radius:8px}
+.sumline b{color:var(--ink);font-weight:800}
+
+/* 截圖編輯器 */
+.edwrap{display:flex;flex-direction:column;gap:11px;min-height:0}
+.edtools{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.tool{border:1px solid var(--line);background:#fff;color:var(--ink2);font-size:12.5px;font-weight:700;
+  padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.tool:hover{border-color:#cdd8e4;background:#f7f9fc}
+.tool.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.tool.on:hover{background:var(--brand);filter:brightness(1.06)}
+.tdiv{width:1px;align-self:stretch;background:var(--line);margin:2px 3px}
+.cols{display:flex;gap:5px;align-items:center;margin-left:4px}
+.cols button{width:24px;height:24px;border-radius:6px;border:2px solid #fff;cursor:pointer;
+  box-shadow:0 0 0 1px var(--line)}
+.cols button.on{box-shadow:0 0 0 2px var(--ink)}
+.edcanvas{background:#12202e;border-radius:9px;padding:10px;display:flex;align-items:center;justify-content:center;
+  overflow:auto;min-height:0}
+.edcanvas canvas{max-width:100%;display:block;cursor:crosshair;border-radius:4px;
+  box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.edhint{font-size:11.5px;color:var(--ink3);line-height:1.6}
+.edhint b{color:var(--ink2)}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);background:#16202b;color:#fff;
+  padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;
+  transition:.22s;z-index:90;box-shadow:0 8px 26px rgba(15,22,32,.3);max-width:80vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.bad{background:var(--warn)}
+.busy{position:fixed;inset:0;background:rgba(15,22,32,.62);display:none;align-items:center;justify-content:center;
+  z-index:95;color:#fff;font-size:15px;font-weight:700;flex-direction:column;gap:11px}
+.busy.on{display:flex}
+.busy .bar{width:260px;height:6px;background:rgba(255,255,255,.22);border-radius:99px;overflow:hidden}
+.busy .bar i{display:block;height:100%;background:#fff;border-radius:99px;width:0;transition:width .15s}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>SOP 錄影標註器</h1>
+  <span class="st" id="stat">尚未載入影片</span>
+  <div class="tools">
+    <button class="tb" id="btnOpen">開啟影片</button>
+    <button class="tb" id="btnMarks">載入標註檔</button>
+    <button class="tb" id="btnClear">清空標註</button>
+    <button class="tb go" id="btnOut" disabled>輸出給 AI<span class="n" id="outN">0</span></button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- 左：標註點 -->
+  <div class="left">
+    <div class="lhead">
+      <h3>標註點</h3><span class="n" id="cnt">0</span>
+      <button class="sortbtn" id="btnSort" disabled>依時間重排</button>
+    </div>
+    <div class="reorder" id="reorderHint">
+      <b>順序已調整</b> —— 這一欄由上到下就是最後輸出的流程順序，與影片時間先後不同。
+    </div>
+    <div class="blocks" id="blocks"></div>
+  </div>
+
+  <!-- 右：主畫面 -->
+  <div class="right">
+    <div class="stage" id="stage">
+      <video id="vid" playsinline></video>
+      <div class="hud" id="hud">00:00.0</div>
+      <div class="drop" id="drop">
+        <b>把螢幕錄影拖進來</b>
+        <span>或點這裡選檔　·　marks.json 也可以直接拖進來</span>
+        <small>影片只在這台電腦上讀取，不會上傳</small>
+      </div>
+    </div>
+
+    <div class="tlwrap">
+      <div class="tl" id="tl">
+        <div class="played" id="played"></div>
+        <div class="head" id="head" style="left:0"></div>
+      </div>
+      <div class="tlbar">
+        <button class="pbtn" id="btnPlay" disabled>▶ 播放</button>
+        <button class="pbtn mark" id="btnMark" disabled>＋ 標註這一刻</button>
+        <div class="clock"><span id="cNow">00:00.0</span> <span>/ <b id="cDur">00:00</b></span></div>
+        <label class="chk"><input type="checkbox" id="cbPause" checked> 標註後自動暫停</label>
+        <div class="seg" id="segRate"></div>
+      </div>
+      <div class="keys">
+        <span><kbd>空白</kbd> 播放／暫停</span>
+        <span><kbd>M</kbd> 標註</span>
+        <span><kbd>←</kbd><kbd>→</kbd> ±1 秒</span>
+        <span><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> ±5 秒</span>
+        <span><kbd>,</kbd><kbd>.</kbd> 逐格</span>
+        <span><kbd>1</kbd>–<kbd>9</kbd> 跳到第 N 個標註</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 輸出彈窗 -->
+<div class="mask" id="mOut">
+  <div class="dlg">
+    <div class="dhead"><h3>輸出給 AI</h3><button class="x" data-close="1">×</button></div>
+    <div class="dbody">
+      <div class="sumline" id="outSum"></div>
+      <div class="big2">
+        <button id="btnZip" class="rec"><b>下載 ZIP</b>
+          <small>一鍵，存到「下載」<br>解壓縮就是 <b id="outFolder"></b></small></button>
+        <button id="btnFolder"><b>直接寫進資料夾</b>
+          <small>要選位置，且系統資料夾<br>會被 Chrome 擋掉</small></button>
+      </div>
+      <label class="chk" style="font-size:12.5px;color:var(--ink2);margin-top:12px">
+        <input type="checkbox" id="cbVideo"> 一併存入原始影片<span id="vidSize"></span>
+        <span style="color:var(--ink3)">— 只有要做口述逐字稿才需要</span></label>
+      <div class="note amber" style="margin-top:12px">
+        送出前看一眼截圖有沒有不該外流的東西，用<b>遮蔽</b>蓋掉。
+      </div>
+    </div>
+    <div class="dfoot"><button class="btn plain" data-close="1" style="margin-left:auto">關閉</button></div>
+  </div>
+</div>
+
+<!-- 截圖編輯器 -->
+<div class="mask" id="mEd">
+  <div class="dlg wide">
+    <div class="dhead"><div><h3 id="edTitle">標記截圖</h3>
+      <div class="sub">在畫面上拖曳就會畫出來。標記可以重畫，原始畫面不會被改掉</div></div>
+      <button class="x" data-edclose="1">×</button></div>
+    <div class="dbody edwrap">
+      <div class="edtools">
+        <button class="tool" data-tool="arrow">↗ 箭頭</button>
+        <button class="tool" data-tool="hand">☝ 手指</button>
+        <button class="tool" data-tool="cursor">➤ 游標</button>
+        <button class="tool" data-tool="badge">① 標號</button>
+        <span class="tdiv"></span>
+        <button class="tool" data-tool="rect">▭ 框選</button>
+        <button class="tool" data-tool="mask">▓ 遮蔽</button>
+        <button class="tool" data-tool="crop">⛶ 放大擷取</button>
+        <div class="cols" id="edCols"></div>
+        <button class="tool" id="edUndo" style="margin-left:auto">↶ 復原</button>
+        <button class="tool" id="edUncrop" style="display:none">取消擷取</button>
+        <button class="tool" id="edReset">清除</button>
+      </div>
+      <div class="edcanvas"><canvas id="edCanvas"></canvas></div>
+      <div class="edhint" id="edHint"></div>
+    </div>
+    <div class="dfoot">
+      <span class="edhint" id="edCount"></span>
+      <button class="btn plain" data-edclose="1" style="margin-left:auto">取消</button>
+      <button class="btn" id="edOk">完成</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="filePick" accept="video/*" style="display:none">
+<input type="file" id="marksPick" accept=".json,application/json" style="display:none">
+<div class="toast" id="toast"></div>
+<div class="busy" id="busy"><span id="busyTxt">處理中…</span><div class="bar"><i id="busyBar"></i></div></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG
+   ══════════════════════════════════════════════════════════════ */
+const CFG = {
+  capW  : 1920, capQ : 0.92,   // 原始畫面：AI 要從上面讀系統名稱與欄位，不能壓太狠
+  thumbW: 340,  thumbQ: 0.74,  // 左欄縮圖：只給人看
+  outMin: 1000,                // 「放大擷取」後的最小輸出寬度 —— 框一小塊也要看得清楚
+  frame : 1/30,
+  colors: ['#e8202a','#f5a524','#2f5fd0','#1f9d6b'],
+  draftKey: 'sopMarkerDraft/2'
+};
+/* ══════════════════════════════════════════════════════════════ */
+
+const V = document.getElementById('vid');
+const $ = id => document.getElementById(id);
+
+/* 狀態。marks 的「陣列順序」就是使用者要的流程順序，跟時間先後是兩回事 ——
+   錄影錄錯順序時，這兩者才會分家。
+   一個 mark：
+     full   原始截圖（data URI），永遠是乾淨的原圖，不會被標記蓋掉
+     img    已載入的 Image，畫布要同步畫圖用
+     edits  {crop:{x,y,w,h}|null, shapes:[...]}，座標一律 0~1 正規化，
+            所以重抓畫面、換解析度都不會跑位
+     _th    縮圖快取（含標記），edits 一改就作廢 */
+let S = { name:'', dur:0, w:0, h:0, marks:[] };
+let file = null, ready = false, active = null, dirty = false, adding = false;
+const uid = () => 'm' + Math.random().toString(36).slice(2,9);
+const newEdits = () => ({ crop:null, shapes:[] });
+
+/* ── 時間格式 ── */
+const t1 = s => { s = Math.max(0, s||0);
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + (s%60).toFixed(1).padStart(4,'0'); };
+const t0 = s => { s = Math.max(0, s||0);
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(Math.floor(s%60)).padStart(2,'0'); };
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── 停留秒數：到「時間軸上」下一個標註為止，不是到列表的下一個。
+      這個數字就是該步驟實際花掉的時間，是把錄影變成工時的關鍵。 ── */
+function holdInfo(m){
+  const later = S.marks.filter(x => x.t > m.t + 0.05);
+  if (!later.length) return { sec:Math.max(0, S.dur - m.t), to:S.dur, end:true, idx:0 };
+  const next = later.reduce((a,b) => b.t < a.t ? b : a);
+  return { sec:next.t - m.t, to:next.t, end:false, idx:S.marks.indexOf(next) + 1 };
+}
+const hold = m => holdInfo(m).sec;
+function reordered(){
+  for (let i=1; i<S.marks.length; i++) if (S.marks[i].t < S.marks[i-1].t) return true;
+  return false;
+}
+const nShapes = m => (m.edits && m.edits.shapes.length ? m.edits.shapes.length : 0)
+                   + (m.edits && m.edits.crop ? 1 : 0);
+
+/* ══════════════ 抓畫面 ══════════════ */
+function capture(){
+  if (!V.videoWidth) return null;
+  const w = Math.min(V.videoWidth, CFG.capW);
+  const h = Math.round(V.videoHeight * w / V.videoWidth);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(V, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', CFG.capQ);
+}
+function loadImg(uri){
+  return new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = uri; });
+}
+/* 等到「畫面真的換好」為止。
+   這是縮圖跟標註時間對不起來的元凶：currentTime 是設下去就馬上變的，
+   但畫面要等解碼完才會換。按 → 再馬上按 M，抓到的會是上一格的畫面，
+   時間卻已經記成新的 —— 兩者兜不起來。
+   requestVideoFrameCallback 會在新影格真的送去合成時才觸發，而且回傳
+   mediaTime，那才是「這張圖到底是第幾秒」的權威答案。 */
+function frameReady(){
+  return new Promise(res => {
+    let done = false;
+    const fin = mt => { if (!done){ done = true; res(mt); } };
+    if (V.requestVideoFrameCallback){
+      V.requestVideoFrameCallback((now, meta) => fin(meta.mediaTime));
+      setTimeout(() => fin(null), 300);        // 暫停中不一定會有新影格，留退路
+    } else setTimeout(() => fin(null), 120);   // 老瀏覽器只能靠等
+  });
+}
+async function settled(){
+  if (V.seeking) await new Promise(r => V.addEventListener('seeked', r, {once:true}));
+  return await frameReady();
+}
+/* 跳到某個時間並等畫面真的換過去，否則抓到的是上一格 */
+async function seek(t){
+  V.currentTime = Math.max(0, Math.min(t, S.dur - 0.02));
+  return await settled();
+}
+async function shoot(m){
+  m.full = capture();
+  m.img = m.full ? await loadImg(m.full) : null;
+  m._th = null;
+}
+
+/* ══════════════ 把標記畫上去 ══════════════
+   原圖 + edits → 成品。縮圖與匯出走的是同一支，所以左欄看到的
+   就是最後交出去的東西，不會有「看起來有畫、匯出沒有」的落差。 */
+/* 圖示是用「單位方框」的路徑畫的（0~1），要多大就乘多大，
+   縮圖跟原尺寸匯出用同一份定義，不會有一邊糊掉的問題。 */
+function rrect(cx, x, y, w, h, r){
+  cx.moveTo(x+r, y);
+  cx.arcTo(x+w, y,   x+w, y+h, r); cx.arcTo(x+w, y+h, x,   y+h, r);
+  cx.arcTo(x,   y+h, x,   y,   r); cx.arcTo(x,   y,   x+w, y,   r);
+  cx.closePath();
+}
+/* 滑鼠游標：尖端在 (0,0)，就是大家在教學截圖裡看到的那個箭頭 */
+const CURSOR = [[0,0],[0,.75],[.20,.57],[.33,.87],[.46,.81],[.33,.52],[.56,.51]];
+function glyph(cx, type, x, y, size, color){
+  cx.save();
+  cx.translate(x, y); cx.scale(size, size);
+  cx.strokeStyle = '#fff'; cx.lineWidth = 0.07; cx.lineJoin = 'round'; cx.fillStyle = color;
+  cx.beginPath();
+  if (type === 'cursor'){
+    CURSOR.forEach((p,i) => i ? cx.lineTo(p[0],p[1]) : cx.moveTo(p[0],p[1]));
+    cx.closePath();
+  } else {                                        // 手指：食指 + 另外兩指 + 手掌 + 拇指
+    rrect(cx, .34, .00, .17, .54, .085);
+    rrect(cx, .52, .24, .16, .33, .080);
+    rrect(cx, .67, .28, .16, .31, .080);
+    rrect(cx, .14, .52, .17, .34, .085);
+    rrect(cx, .26, .42, .58, .56, .160);
+  }
+  cx.stroke(); cx.fill();
+  cx.restore();
+}
+function drawShapes(cx, shapes, W, H, ox, oy, scale){
+  const lw = Math.max(2, Math.round(Math.min(W, H) / 150));
+  const base = Math.min(W, H) * scale;
+  shapes.forEach(s => {
+    const x1 = (s.x1 * W - ox) * scale, y1 = (s.y1 * H - oy) * scale;
+    const x2 = (s.x2 * W - ox) * scale, y2 = (s.y2 * H - oy) * scale;
+    cx.lineWidth = lw; cx.strokeStyle = s.color; cx.fillStyle = s.color;
+    cx.lineCap = 'round'; cx.lineJoin = 'round';
+    if (s.type === 'rect'){
+      cx.strokeRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
+    } else if (s.type === 'mask'){
+      cx.fillStyle = '#16202b';
+      cx.fillRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
+    } else if (s.type === 'hand' || s.type === 'cursor'){
+      glyph(cx, s.type, x1, y1, Math.max(Math.hypot(x2-x1, y2-y1), base*0.13), s.color);
+    } else if (s.type === 'badge'){
+      const r = Math.max(Math.hypot(x2-x1, y2-y1), base*0.055);
+      cx.beginPath(); cx.arc(x1, y1, r, 0, 6.2832);
+      cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = Math.max(2, r*0.13); cx.stroke();
+      cx.fillStyle = '#fff'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.font = `800 ${Math.round(r*1.35)}px ${getComputedStyle(document.body).fontFamily}`;
+      cx.fillText(String(s.n || 1), x1, y1 + r*0.06);
+    } else {                                      // 箭頭
+      const a = Math.atan2(y2-y1, x2-x1), head = Math.max(lw*3.2, 11);
+      cx.beginPath(); cx.moveTo(x1,y1);
+      cx.lineTo(x2 - Math.cos(a)*head*0.8, y2 - Math.sin(a)*head*0.8); cx.stroke();
+      cx.beginPath(); cx.moveTo(x2, y2);
+      cx.lineTo(x2 - Math.cos(a-0.42)*head, y2 - Math.sin(a-0.42)*head);
+      cx.lineTo(x2 - Math.cos(a+0.42)*head, y2 - Math.sin(a+0.42)*head);
+      cx.closePath(); cx.fill();
+    }
+  });
+}
+function render1(m, maxW, q){
+  if (!m.img) return null;
+  const W = m.img.width, H = m.img.height;
+  const e = m.edits || newEdits(), c = e.crop;
+  const sx = c ? c.x*W : 0, sy = c ? c.y*H : 0;
+  const sw = c ? c.w*W : W,  sh = c ? c.h*H : H;
+  let ow = sw, oh = sh;
+  if (c && ow < CFG.outMin){ oh = oh * CFG.outMin / ow; ow = CFG.outMin; }  // 放大擷取
+  if (maxW && ow > maxW){ oh = oh * maxW / ow; ow = maxW; }
+  ow = Math.max(1, Math.round(ow)); oh = Math.max(1, Math.round(oh));
+  const cv = document.createElement('canvas'); cv.width = ow; cv.height = oh;
+  const cx = cv.getContext('2d');
+  cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+  cx.drawImage(m.img, sx, sy, sw, sh, 0, 0, ow, oh);
+  drawShapes(cx, e.shapes, W, H, sx, sy, ow/sw);
+  return cv.toDataURL('image/jpeg', q);
+}
+const thumbOf = m => (m._th || (m._th = render1(m, CFG.thumbW, CFG.thumbQ)));
+const shotOf  = m => render1(m, CFG.capW, CFG.capQ);
+
+/* ══════════════ 影片載入 ══════════════ */
+function openVideo(f){
+  if (!f) return;
+  if (!/^video\//.test(f.type) && !/\.(mp4|webm|mov|mkv|m4v)$/i.test(f.name))
+    return toast('這看起來不是影片檔', true);
+  /* 換一支影片時，舊標註的時間點對不上新影片，截圖也是舊的 ——
+     留著只會產出一份看起來正常、其實張冠李戴的標註稿。先問清楚。
+     （先載標註檔再開影片時檔名會一致，不會問到） */
+  if (S.marks.length && S.name && S.name !== f.name){
+    if (!confirm(`目前有 ${S.marks.length} 個標註是「${S.name}」的。\n` +
+                 `換成「${f.name}」會把它們清掉，確定？`)) return;
+    S.marks = []; active = null;
+  }
+  file = f;
+  V.src = URL.createObjectURL(f);
+  V.load();
+}
+V.addEventListener('loadedmetadata', async () => {
+  ready = true;
+  S.name = file ? file.name : S.name;
+  S.dur = V.duration; S.w = V.videoWidth; S.h = V.videoHeight;
+  $('drop').classList.add('hide');
+  $('hud').classList.add('on');
+  ['btnPlay','btnMark'].forEach(id => $(id).disabled = false);
+  $('cDur').textContent = t0(S.dur);
+  $('stat').textContent = `${S.name}　·　${t0(S.dur)}　·　${S.w}×${S.h}`;
+  $('vidSize').textContent = file
+    ? (file.size >= 1048576 ? `（${(file.size/1048576).toFixed(0)} MB）`
+                            : `（${Math.max(1, Math.round(file.size/1024))} KB）`) : '';
+  render();
+  if (S.marks.length){
+    if (S.marks.some(m => !m.img)) await recaptureAll('重建每一格畫面…');
+  } else await restoreDraft();
+});
+V.addEventListener('error', () => toast('這個影片瀏覽器播不動，請先轉成 mp4（H.264）', true));
+V.addEventListener('timeupdate', paintHead);
+V.addEventListener('seeking', paintHead);
+V.addEventListener('play',  () => $('btnPlay').textContent = '❚❚ 暫停');
+V.addEventListener('pause', () => $('btnPlay').textContent = '▶ 播放');
+
+$('btnOpen').onclick = () => $('filePick').click();
+$('drop').onclick = () => $('filePick').click();
+$('filePick').addEventListener('change', e => { openVideo(e.target.files[0]); e.target.value=''; });
+const stage = $('stage');
+stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('over'); });
+stage.addEventListener('dragleave', () => stage.classList.remove('over'));
+/* 影片拖進來就開，marks.json 拖進來就套上去 */
+stage.addEventListener('drop', e => {
+  e.preventDefault(); stage.classList.remove('over');
+  const files = [...(e.dataTransfer.files || [])];
+  const mj = files.find(f => /\.json$/i.test(f.name));
+  if (mj) return loadMarksFile(mj);
+  openVideo(files[0]);
+});
+
+/* ══════════════ 標註 ══════════════ */
+async function addMark(){
+  if (!ready) return toast('請先載入影片', true);
+  if (adding) return;                      // 連按 M 不要疊在一起
+  adding = true;
+  try {
+    if ($('cbPause').checked) V.pause();
+    /* 先等畫面真的定下來，再讀時間、再截圖 ——
+       三件事的順序反了，記到的時間跟截到的畫面就會是不同的一刻。 */
+    const mt = await settled();
+    const t = (mt != null && Math.abs(mt - V.currentTime) < 1) ? mt : V.currentTime;
+    if (S.marks.some(m => Math.abs(m.t - t) < 0.15)){ toast('這個時間點已經標過了', true); return; }
+    const m = { id:uid(), t, note:'', full:null, img:null, edits:newEdits(), _th:null };
+    await shoot(m);
+    S.marks.push(m);            // 一律加在最後；順序不對再拖，比自作聰明插隊好
+    active = m.id;
+    save(); render();
+    const ta = document.querySelector(`.blk[data-id="${m.id}"] .note`);
+    if (ta){ ta.scrollIntoView({block:'center', behavior:'smooth'}); ta.focus(); }
+  } finally { adding = false; }
+}
+async function recapture(m){
+  busy(true, '重抓畫面…');
+  const back = V.currentTime;
+  await seek(m.t); await shoot(m); await seek(back);
+  busy(false); save(); render();
+}
+/* 「⟳ 對齊」：把這一刀改到目前播放位置。人已經停在對的地方了，
+   不用再 seek 一次，等畫面定下來直接截就好。 */
+async function alignTo(m){
+  busy(true, '對齊畫面…');
+  const mt = await settled();
+  m.t = (mt != null && Math.abs(mt - V.currentTime) < 1) ? mt : V.currentTime;
+  await shoot(m);
+  busy(false); save(); render();
+  toast(`已對齊到 ${t1(m.t)}`);
+}
+
+/* ══════════════ 渲染 ══════════════ */
+function blockHTML(m, i){
+  const th = thumbOf(m), n = nShapes(m);
+  return `<div class="blk${active===m.id?' act':''}" data-id="${m.id}">
+    <div class="brow">
+      <div class="bnum" data-drag="1" title="按住拖曳可調整順序">${i+1}</div>
+      <div class="bth" data-edit="1" title="點一下開啟截圖編輯器（箭頭／框／遮蔽／放大擷取）">
+        ${th ? `<img src="${th}" alt="">` : '<div class="miss">畫面待補<br>按 ⟳ 對齊</div>'}
+        ${n ? `<span class="edited">已標記 ${n}</span>` : ''}
+        <span class="pen">✎ 標記</span>
+      </div>
+      <div class="bmeta">
+        <div class="btime">${t1(m.t)}</div>
+        <div class="bacts">
+          <button class="mini" data-goto="1" title="跳到這個時間">跳到</button>
+          <button class="mini" data-sync="1" title="把時間改成目前播放位置，並重抓畫面">⟳ 對齊</button>
+          <button class="mini del" data-del="1">刪除</button>
+        </div>
+      </div>
+    </div>
+    <textarea class="note" rows="1" placeholder="這一步在做什麼？為什麼要這樣做？有什麼例外？">${esc(m.note)}</textarea>
+  </div>`;
+}
+function grow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
+
+function renderBlocks(){
+  const el = $('blocks');
+  if (!S.marks.length){
+    el.innerHTML = `<div class="lempty">${ready
+      ? '還沒有標註點。<br>播到要記錄的畫面，按 <b>M</b> 或「＋ 標註這一刻」。'
+      : '先載入螢幕錄影，<br>再一步一步標註。'}</div>`;
+  } else {
+    el.innerHTML = S.marks.map(blockHTML).join('');
+    el.querySelectorAll('textarea.note').forEach(grow);
+  }
+  $('cnt').textContent = S.marks.length;
+  $('outN').textContent = S.marks.length;
+  $('btnSort').disabled = S.marks.length < 2;
+  $('btnOut').disabled = !S.marks.length;
+  $('reorderHint').classList.toggle('on', reordered());
+}
+/* 只換選取樣式，不重建 DOM ── 不然點一下註解框，焦點會跟著整段 innerHTML 一起消失 */
+function paintActive(){
+  document.querySelectorAll('.blk').forEach(b => b.classList.toggle('act', b.dataset.id === active));
+  document.querySelectorAll('.pin').forEach(p => p.classList.toggle('act', p.dataset.pin === active));
+}
+/* 時間改了只更新那幾個數字，同樣不重建 */
+function refreshTimes(){
+  S.marks.forEach(m => {
+    const b = document.querySelector(`.blk[data-id="${m.id}"]`);
+    if (b) b.querySelector('.btime').textContent = t1(m.t);
+  });
+  $('reorderHint').classList.toggle('on', reordered());
+}
+function renderPins(){
+  const tl = $('tl');
+  tl.querySelectorAll('.pin').forEach(p => p.remove());
+  if (!S.dur) return;
+  S.marks.forEach((m, i) => {
+    const p = document.createElement('div');
+    p.className = 'pin' + (active===m.id ? ' act' : '');
+    p.style.left = (m.t / S.dur * 100) + '%';
+    p.dataset.pin = m.id;
+    p.innerHTML = `<b>${i+1}</b>`;
+    p.title = `#${i+1}　${t1(m.t)}　拖曳可微調時間`;
+    tl.appendChild(p);
+  });
+}
+function renderTicks(){
+  const tl = $('tl');
+  tl.querySelectorAll('.tick').forEach(t => t.remove());
+  if (!S.dur) return;
+  const raw = S.dur / 8;                       // 刻度固定在 6~12 條之間，長片短片都好讀
+  const step = [5,10,15,30,60,120,300,600,900,1800].find(x => x >= raw) || 3600;
+  for (let s = step; s < S.dur; s += step){
+    const d = document.createElement('div');
+    d.className = 'tick'; d.style.left = (s / S.dur * 100) + '%';
+    d.innerHTML = `<i>${t0(s)}</i>`;
+    tl.insertBefore(d, tl.firstChild.nextSibling);
+  }
+}
+function paintHead(){
+  if (!S.dur) return;
+  const p = V.currentTime / S.dur * 100;
+  $('head').style.left = p + '%';
+  $('played').style.width = p + '%';
+  $('cNow').textContent = t1(V.currentTime);
+  $('hud').textContent = t1(V.currentTime);
+}
+function render(){ renderBlocks(); renderTicks(); renderPins(); paintHead(); }
+
+/* ══════════════ 互動 ══════════════ */
+$('btnPlay').onclick = () => V.paused ? V.play() : V.pause();
+$('btnMark').onclick = addMark;
+$('btnSort').onclick = () => {
+  S.marks.sort((a,b) => a.t - b.t); save(); render(); toast('已依影片時間重新排序');
+};
+$('btnClear').onclick = () => {
+  if (S.marks.length && !confirm('會清掉所有標註、註解與標記，確定？')) return;
+  S.marks = []; active = null;
+  try { localStorage.removeItem(CFG.draftKey); } catch(e){}
+  render(); toast('已清空');
+};
+
+/* 播放速度：長錄影用 2 倍速掃過去找重點 */
+$('segRate').innerHTML = [0.5,1,1.5,2].map(r =>
+  `<button data-r="${r}" class="${r===1?'on':''}">${r}×</button>`).join('');
+$('segRate').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  V.playbackRate = Number(b.dataset.r);
+  $('segRate').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
+});
+
+/* 時間軸：點擊定位、拖曳播放頭 */
+let scrub = false;
+function tlSeek(e){
+  const r = $('tl').getBoundingClientRect();
+  V.currentTime = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * S.dur;
+  paintHead();
+}
+$('tl').addEventListener('pointerdown', e => {
+  if (!ready || e.target.closest('.pin')) return;
+  scrub = true; $('tl').setPointerCapture(e.pointerId); tlSeek(e);
+});
+$('tl').addEventListener('pointermove', e => { if (scrub) tlSeek(e); });
+$('tl').addEventListener('pointerup',   () => scrub = false);
+$('tl').addEventListener('pointercancel', () => scrub = false);
+
+/* 拖曳時間軸上的釘子微調時間 —— 標晚了兩秒不必刪掉重標 */
+let pinDrag = null;
+$('tl').addEventListener('pointerdown', e => {
+  const p = e.target.closest('.pin'); if (!p) return;
+  e.stopPropagation();
+  pinDrag = { id:p.dataset.pin, el:p };
+  p.setPointerCapture(e.pointerId);
+  active = pinDrag.id; paintActive();
+});
+document.addEventListener('pointermove', e => {
+  if (!pinDrag) return;
+  const r = $('tl').getBoundingClientRect();
+  const t = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * S.dur;
+  const m = S.marks.find(x => x.id === pinDrag.id); if (!m) return;
+  m.t = t;
+  pinDrag.el.style.left = (t / S.dur * 100) + '%';
+  refreshTimes();
+});
+document.addEventListener('pointerup', async () => {
+  if (!pinDrag) return;
+  const m = S.marks.find(x => x.id === pinDrag.id);
+  pinDrag = null;
+  if (m) await recapture(m);
+});
+
+/* 左欄事件委派 ──
+   關鍵：點註解框時什麼都不要做。以前這裡會 renderBlocks()，
+   整段 innerHTML 重建，游標當場消失，打字打不下去。 */
+$('blocks').addEventListener('click', async e => {
+  const blk = e.target.closest('.blk'); if (!blk) return;
+  if (e.target.closest('textarea')) return;
+  const m = S.marks.find(x => x.id === blk.dataset.id); if (!m) return;
+  if (e.target.dataset.del){
+    if (m.note.trim() && !confirm('這個標註有寫註解，確定刪除？')) return;
+    S.marks = S.marks.filter(x => x.id !== m.id);
+    if (active === m.id) active = null;
+    save(); render(); return;
+  }
+  if (e.target.dataset.sync){ await alignTo(m); return; }
+  active = m.id; paintActive();
+  if (e.target.closest('[data-edit]')){ openEditor(m); return; }
+  if (e.target.dataset.goto) V.currentTime = m.t;
+});
+$('blocks').addEventListener('focusin', e => {
+  if (!e.target.classList.contains('note')) return;
+  const blk = e.target.closest('.blk');
+  if (blk && active !== blk.dataset.id){ active = blk.dataset.id; paintActive(); }
+});
+$('blocks').addEventListener('input', e => {
+  if (!e.target.classList.contains('note')) return;
+  const blk = e.target.closest('.blk');
+  const m = S.marks.find(x => x.id === blk.dataset.id); if (!m) return;
+  m.note = e.target.value; grow(e.target); save();
+});
+
+/* 拖曳排序（Pointer Events：滑鼠與觸控走同一條路徑） */
+let drag = null;
+const clearDrop = () => document.querySelectorAll('.blk.dropbefore,.blk.dropafter')
+  .forEach(b => b.classList.remove('dropbefore','dropafter'));
+document.addEventListener('pointerdown', e => {
+  if (e.button > 0) return;
+  const h = e.target.closest && e.target.closest('[data-drag]'); if (!h) return;
+  const blk = h.closest('.blk');
+  drag = { id:blk.dataset.id, y0:e.clientY, started:false, target:null };
+  try { h.setPointerCapture(e.pointerId); } catch(err){}
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.started){
+    if (Math.abs(e.clientY - drag.y0) < 4) return;   // 容錯：單純點一下不算拖曳
+    drag.started = true;
+    const b = document.querySelector(`.blk[data-id="${drag.id}"]`);
+    b && b.classList.add('dragging');
+    document.body.classList.add('dragging-on');
+  }
+  e.preventDefault();
+  clearDrop(); drag.target = null;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const row = el && el.closest ? el.closest('.blk') : null;
+  if (row && row.dataset.id !== drag.id){
+    const r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height/2;
+    row.classList.add(before ? 'dropbefore' : 'dropafter');
+    drag.target = { id:row.dataset.id, before };
+  }
+}, {passive:false});
+function endDrag(){
+  if (!drag) return;
+  const d = drag; drag = null;
+  document.querySelectorAll('.blk.dragging').forEach(b => b.classList.remove('dragging'));
+  clearDrop(); document.body.classList.remove('dragging-on');
+  if (!d.started || !d.target) return;
+  const from = S.marks.findIndex(x => x.id === d.id);
+  let to = S.marks.findIndex(x => x.id === d.target.id);
+  if (from < 0 || to < 0) return;
+  const [moved] = S.marks.splice(from, 1);
+  if (from < to) to--;                                // 往下搬時，抽掉自己會讓目標往前一格
+  S.marks.splice(d.target.before ? to : to+1, 0, moved);
+  active = moved.id; save(); render();
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+/* 快捷鍵 */
+const modalOpen = () => document.querySelector('.mask.on');
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    if ($('mEd').classList.contains('on')) return closeEditor();
+    if ($('mOut').classList.contains('on')) return $('mOut').classList.remove('on');
+  }
+  const tag = (e.target.tagName||'').toLowerCase();
+  if (tag === 'textarea' || tag === 'input' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!ready || modalOpen()) return;
+  const k = e.key;
+  if (k === ' ')       { e.preventDefault(); V.paused ? V.play() : V.pause(); }
+  else if (k === 'm' || k === 'M') { e.preventDefault(); addMark(); }
+  else if (k === 'ArrowLeft')  { e.preventDefault(); V.currentTime -= e.shiftKey ? 5 : 1; }
+  else if (k === 'ArrowRight') { e.preventDefault(); V.currentTime += e.shiftKey ? 5 : 1; }
+  else if (k === ',') { e.preventDefault(); V.pause(); V.currentTime -= CFG.frame; }
+  else if (k === '.') { e.preventDefault(); V.pause(); V.currentTime += CFG.frame; }
+  else if (/^[1-9]$/.test(k)){
+    const m = S.marks[Number(k)-1];
+    if (m){ e.preventDefault(); V.currentTime = m.t; active = m.id; paintActive(); }
+  }
+});
+
+/* ══════════════ 截圖編輯器 ══════════════ */
+let ED = null;   // {m, tool, color, shapes, crop, drawing, p0, p1}
+function openEditor(m){
+  if (!m.img) return toast('這一格還沒有畫面，先按「⟳ 對齊」重抓', true);
+  ED = { m, tool:'arrow', color:CFG.colors[0],
+         shapes:JSON.parse(JSON.stringify(m.edits.shapes)),
+         crop:m.edits.crop ? Object.assign({}, m.edits.crop) : null,
+         drawing:false, p0:null, p1:null };
+  $('edTitle').textContent = `標記截圖 · 第 ${S.marks.indexOf(m)+1} 個標註（${t1(m.t)}）`;
+  $('edCols').innerHTML = CFG.colors.map(c =>
+    `<button data-c="${c}" style="background:${c}" class="${c===ED.color?'on':''}"></button>`).join('');
+  $('mEd').classList.add('on');
+  edTool('arrow');
+  /* 畫布用顯示尺寸即可，座標存的是 0~1，匯出時才換算回原圖解析度 */
+  const cv = $('edCanvas');
+  const maxW = Math.min(m.img.width, Math.max(560, window.innerWidth - 200));
+  cv.width = maxW; cv.height = Math.round(m.img.height * maxW / m.img.width);
+  edPaint();
+}
+function closeEditor(){ $('mEd').classList.remove('on'); ED = null; }
+const POINT = ['hand','cursor','badge'];         // 這幾種是「點一下就放」，拖曳只是調大小
+function edTool(t){
+  ED.tool = t;
+  document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('edHint').innerHTML = ({
+    arrow : '<b>拖曳</b>畫箭頭 —— 從空白處拉向要看的地方。',
+    hand  : '<b>點一下</b>放一隻手指，指尖落在你點的位置。想大一點就按住往外拖。',
+    cursor: '<b>點一下</b>放一個滑鼠游標，尖端落在你點的位置。按住往外拖可放大。',
+    badge : '<b>點一下</b>放一個編號，會自動 1、2、3 排下去 —— 同一步裡的操作順序用這個標。',
+    rect  : '<b>拖曳</b>框出要注意的區域。',
+    mask  : '拖曳框出要<b>蓋掉</b>的地方。客戶名稱、報價、個資在送出前用這個遮起來。',
+    crop  : '拖曳框出要<b>放大擷取</b>的範圍，匯出時只留這一塊並放大。'
+  })[t];
+}
+function edXY(e){
+  const cv = $('edCanvas'), r = cv.getBoundingClientRect();
+  return { x: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
+           y: Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1) };
+}
+function edPaint(){
+  if (!ED) return;
+  const cv = $('edCanvas'), cx = cv.getContext('2d'), m = ED.m;
+  cx.clearRect(0,0,cv.width,cv.height);
+  cx.drawImage(m.img, 0, 0, cv.width, cv.height);
+  const live = ED.drawing && ED.p0 && ED.p1;
+  const shapes = ED.shapes.concat(
+    live && ED.tool !== 'crop'
+      ? [{type:ED.tool, x1:ED.p0.x, y1:ED.p0.y, x2:ED.p1.x, y2:ED.p1.y, color:ED.color,
+          n:ED.shapes.filter(x => x.type === 'badge').length + 1}] : []);
+  drawShapes(cx, shapes, cv.width, cv.height, 0, 0, 1);
+  const crop = (live && ED.tool === 'crop')
+    ? { x:Math.min(ED.p0.x,ED.p1.x), y:Math.min(ED.p0.y,ED.p1.y),
+        w:Math.abs(ED.p1.x-ED.p0.x), h:Math.abs(ED.p1.y-ED.p0.y) } : ED.crop;
+  if (crop){                                   // 擷取範圍：外面壓暗，一眼看出會留下什麼
+    cx.fillStyle = 'rgba(13,20,29,.62)';
+    const X = crop.x*cv.width, Y = crop.y*cv.height, W = crop.w*cv.width, H = crop.h*cv.height;
+    cx.fillRect(0,0,cv.width,Y); cx.fillRect(0,Y+H,cv.width,cv.height-Y-H);
+    cx.fillRect(0,Y,X,H); cx.fillRect(X+W,Y,cv.width-X-W,H);
+    cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.setLineDash([7,5]);
+    cx.strokeRect(X,Y,W,H); cx.setLineDash([]);
+  }
+  $('edCount').textContent = `${ED.shapes.length} 個標記${ED.crop ? '　·　已設定放大擷取範圍' : ''}`;
+  $('edUncrop').style.display = ED.crop ? '' : 'none';
+}
+$('edCanvas').addEventListener('pointerdown', e => {
+  if (!ED) return;
+  $('edCanvas').setPointerCapture(e.pointerId);
+  ED.drawing = true; ED.p0 = edXY(e); ED.p1 = ED.p0; edPaint();
+});
+$('edCanvas').addEventListener('pointermove', e => {
+  if (!ED || !ED.drawing) return;
+  ED.p1 = edXY(e); edPaint();
+});
+$('edCanvas').addEventListener('pointerup', () => {
+  if (!ED || !ED.drawing) return;
+  ED.drawing = false;
+  const a = ED.p0, b = ED.p1;
+  const far = Math.abs(b.x-a.x) > 0.012 || Math.abs(b.y-a.y) > 0.012;   // 手一抖不要留下垃圾
+  if (POINT.includes(ED.tool)){                    // 點一下就放，不需要拖出距離
+    const s = { type:ED.tool, x1:a.x, y1:a.y, x2:b.x, y2:b.y, color:ED.color };
+    if (ED.tool === 'badge') s.n = ED.shapes.filter(x => x.type === 'badge').length + 1;
+    ED.shapes.push(s);
+  } else if (far){
+    if (ED.tool === 'crop')
+      ED.crop = { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), w:Math.abs(b.x-a.x), h:Math.abs(b.y-a.y) };
+    else
+      ED.shapes.push({ type:ED.tool, x1:a.x, y1:a.y, x2:b.x, y2:b.y, color:ED.color });
+  }
+  ED.p0 = ED.p1 = null; edPaint();
+});
+document.querySelectorAll('.tool[data-tool]').forEach(b => b.onclick = () => edTool(b.dataset.tool));
+$('edCols').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !ED) return;
+  ED.color = b.dataset.c;
+  $('edCols').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
+});
+$('edUndo').onclick    = () => { if (!ED) return; ED.shapes.pop(); edPaint(); };
+$('edUncrop').onclick  = () => { if (!ED) return; ED.crop = null; edPaint(); };
+$('edReset').onclick   = () => { if (!ED) return; ED.shapes = []; ED.crop = null; edPaint(); };
+$('edOk').onclick = () => {
+  if (!ED) return;
+  ED.m.edits = { crop:ED.crop, shapes:ED.shapes };
+  ED.m._th = null;                                  // 縮圖快取作廢，下次渲染才會帶上新標記
+  closeEditor(); save(); renderBlocks(); paintActive();
+  toast('標記已套用');
+};
+document.querySelectorAll('[data-edclose]').forEach(b => b.onclick = closeEditor);
+$('mEd').addEventListener('click', e => { if (e.target === $('mEd')) closeEditor(); });
+
+/* ══════════════ 草稿 ══════════════
+   影片本身不存（太大，也沒必要）。只存時間點、註解與標記 ——
+   下次載入同一個影片檔，畫面照時間重抓回來，標記是正規化座標，直接套得上去。 */
+let saveTimer = null;
+function save(){
+  dirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(CFG.draftKey, JSON.stringify({
+        name:S.name, dur:S.dur,
+        marks:S.marks.map(m => ({id:m.id, t:m.t, note:m.note, edits:m.edits}))
+      }));
+    } catch(e){ /* 存不進去就算了，匯出才是正經的保存方式 */ }
+  }, 400);
+}
+async function restoreDraft(){
+  if (S.marks.length) return;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(CFG.draftKey) || 'null'); } catch(e){}
+  if (!d || !d.marks || !d.marks.length) return;
+  if (d.name !== S.name)
+    return toast(`有 ${d.marks.length} 個標註的草稿（${d.name}），載入那個影片才接得回來`);
+  S.marks = d.marks.map(m => ({ id:m.id||uid(), t:m.t, note:m.note||'',
+                                full:null, img:null, edits:m.edits||newEdits(), _th:null }));
+  await recaptureAll('接續上次的標註…');
+  toast(`已接續草稿，共 ${S.marks.length} 個標註`);
+}
+async function recaptureAll(label){
+  const back = V.currentTime, was = !V.paused;
+  V.pause(); busy(true, label, 0);
+  for (let i = 0; i < S.marks.length; i++){
+    if (!S.marks[i].img){ await seek(S.marks[i].t); await shoot(S.marks[i]); }
+    busy(true, label, (i+1)/S.marks.length);
+  }
+  await seek(back); if (was) V.play();
+  busy(false); render();
+}
+
+/* ══════════════ 載入標註檔 ══════════════
+   影片與 marks.json 各載各的，順序無所謂。
+   marks.json 裡記著當初那支影片的檔名，兩邊對不上時會先問過再套，
+   免得把標註的時間點套到別支影片上 —— 那種錯畫面全歪，而且看不出來。 */
+async function loadMarksFile(f){
+  let d = null;
+  try { d = JSON.parse(await f.text()); } catch(e){ d = null; }
+  if (!d || !Array.isArray(d.marks))
+    return toast('這不是標註檔 —— 要選匯出資料夾裡的 marks.json', true);
+  if (!d.marks.length) return toast('這個標註檔裡沒有任何標註', true);
+
+  const want = d.video && d.video.name;
+  if (ready && want && S.name && want !== S.name &&
+      !confirm(`這份標註檔是「${want}」的，目前開的是「${S.name}」。\n` +
+               `時間點可能對不上，還是要套用嗎？`)) return;
+
+  S.marks = d.marks.map(m => ({ id:uid(), t:Number(m.t)||0, note:m.note||'',
+                                full:null, img:null, edits:m.edits||newEdits(), _th:null }));
+  active = null; dirty = false;
+  if (ready){
+    render();
+    await recaptureAll('重建每一格畫面…');
+    toast(`已載入 ${S.marks.length} 個標註`);
+  } else {
+    S.name = want || S.name; render();
+    toast(`已載入 ${S.marks.length} 個標註 —— 請接著開啟${want ? '「'+want+'」' : '對應的影片'}`);
+  }
+}
+$('btnMarks').onclick = () => $('marksPick').click();
+$('marksPick').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (f) loadMarksFile(f);
+});
+
+/* ══════════════ 輸出 ══════════════ */
+$('btnOut').onclick = () => {
+  const shots = S.marks.filter(m => m.img).length;
+  const marked = S.marks.filter(m => nShapes(m)).length;
+  const noNote = S.marks.filter(m => !m.note.trim()).length;
+  $('outSum').innerHTML =
+    `<span>標註點 <b>${S.marks.length}</b></span>` +
+    `<span>有截圖 <b>${shots}</b></span>` +
+    `<span>有標記 <b>${marked}</b></span>` +
+    (noNote ? `<span style="color:var(--amber)">沒寫註解 <b>${noNote}</b></span>`
+            : `<span style="color:var(--ai)">註解都寫了 <b>✓</b></span>`);
+  $('outFolder').textContent = projName();
+  $('mOut').classList.add('on');
+};
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $('mOut').classList.remove('on'));
+$('mOut').addEventListener('click', e => { if (e.target === $('mOut')) $('mOut').classList.remove('on'); });
+
+function shotName(m, i){
+  return `shots/${String(i+1).padStart(2,'0')}_t${String(Math.round(m.t)).padStart(6,'0')}.jpg`;
+}
+/* 專案資料夾的名字。ZIP 與資料夾兩種匯出用同一個，事後才認得出是同一份東西 */
+function projName(){
+  return (S.name || '錄影').replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, '').slice(0, 50) + '_標註';
+}
+function buildDocs(){
+  const now = new Date();
+  const stamp = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' +
+                String(now.getDate()).padStart(2,'0') + ' ' +
+                String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  const ro = reordered();
+  const L = {arrow:'箭頭', hand:'手指', cursor:'游標', badge:'編號', rect:'框選', mask:'遮蔽'};
+  const kindOf = m => {
+    const s = (m.edits && m.edits.shapes) || [];
+    const out = Object.keys(L).filter(k => s.some(x => x.type === k)).map(k => L[k]);
+    if (m.edits && m.edits.crop) out.push('放大擷取');
+    return out;
+  };
+
+  const json = {
+    schema: 'sop-marks/1',
+    video: { name:S.name, duration:Number(S.dur.toFixed(2)), width:S.w, height:S.h },
+    reordered: ro,
+    exportedAt: now.toISOString(),
+    marks: S.marks.map((m,i) => ({
+      seq:i+1, t:Number(m.t.toFixed(2)), timecode:t1(m.t),
+      hold:Number(hold(m).toFixed(2)), note:m.note,
+      shot:shotName(m,i), marked:kindOf(m), edits:m.edits
+    }))
+  };
+
+  let md = `# 錄影標註稿\n\n`;
+  md += `| 項目 | 內容 |\n|------|------|\n`;
+  md += `| 來源影片 | \`${S.name}\` |\n`;
+  md += `| 影片長度 | ${t0(S.dur)}（${S.dur.toFixed(1)} 秒）· ${S.w}×${S.h} |\n`;
+  md += `| 標註點 | ${S.marks.length} 個 |\n`;
+  md += `| 順序 | ${ro ? '**使用者已調整過** —— 下面的順序才是正確流程順序，與影片時間先後不同'
+                      : '與影片時間先後一致'} |\n`;
+  md += `| 匯出時間 | ${stamp} |\n\n`;
+  md += `> **給 AI 的說明**\n`;
+  md += `> 1. 這是使用者親手標的操作流程，每個標註點大致對應 SOP 的一個步驟。\n`;
+  md += `> 2. 下方的編號順序就是**正確的流程順序**，請照這個順序建步驟。\n`;
+  md += `> 3.「這一步耗時」是這個標註點到時間軸上下一個標註點的秒數，`;
+  md += `可當作該步驟「每件時間」的候選值（來源標記為：錄影實測）。\n`;
+  md += `> 4. 截圖在 \`shots/\`，**請實際讀圖**確認系統名稱、檔案名稱與畫面內容，不要只看註解。\n`;
+  md += `> 5. 截圖上的標記：**箭頭／手指／游標／框選**是使用者指出「這裡才是重點」，請優先看那個位置；`;
+  md += `**編號**①②③是同一步之內的操作順序；`;
+  md += `**遮蔽**的黑塊是刻意蓋掉的敏感資料，不必追問內容；`;
+  md += `**放大擷取**的圖只留了畫面的一部分，看不到整個視窗是正常的。\n`;
+  md += `> 6. 錄影只錄得到「做一件的樣子」。**一天做幾件、多久做一次、幾個人做，錄影裡看不出來，一定要另外問使用者。**\n\n`;
+  md += `## 一覽\n\n| # | 時間 | 這一步耗時 | 標記 | 註解摘要 |\n|---|------|-----------|------|---------|\n`;
+  S.marks.forEach((m,i) => {
+    const first = (m.note.split('\n')[0] || '（未寫註解）').slice(0,36).replace(/\|/g,'\\|');
+    md += `| ${i+1} | ${t1(m.t)} | ${hold(m).toFixed(1)} 秒 | ${kindOf(m).join('、') || '—'} | ${first} |\n`;
+  });
+  md += `\n---\n\n`;
+  S.marks.forEach((m,i) => {
+    const k = kindOf(m);
+    md += `## ${i+1}. ${(m.note.split('\n')[0] || '（未寫註解）').slice(0,60)}\n\n`;
+    const hi = holdInfo(m);
+    md += `- 影片時間：**${t1(m.t)}**\n`;
+    md += `- 這一步耗時：**${hi.sec.toFixed(1)} 秒**（到${hi.end ? '影片結束' : ' ' + t1(hi.to) + ' 的下一刀'}）\n`;
+    md += `- 截圖：\`${shotName(m,i)}\`${k.length ? `（使用者標記了：${k.join('、')}）` : ''}\n`;
+    md += m.note.trim() ? `\n${m.note.trim()}\n\n` : `\n（這一格沒有寫註解，請看截圖並向使用者確認）\n\n`;
+  });
+  md += `---\n\n## 接下來\n\n`;
+  md += `把這個資料夾交給 Claude，說「幫我把這份標註做成 SOP」。Claude 會：\n\n`;
+  md += `1. 讀完這份與 \`shots/\` 的截圖，整理出現況流程草稿\n`;
+  md += `2. 跟你確認每一步的件數、頻率、人數（錄影裡沒有這些）\n`;
+  md += `3. 一起規劃 AI 導入後的流程（含維護與審核，不然效益會高估）\n`;
+  md += `4. 產出交件檔 \`.sop.html\`，並問你要不要上傳給 AI 發展部\n`;
+  return { json, md };
+}
+
+function bytes(uri){
+  const b = atob(uri.split(',')[1]);
+  const u = new Uint8Array(b.length);
+  for (let i=0; i<b.length; i++) u[i] = b.charCodeAt(i);
+  return u;
+}
+/* 匯出前確保每個標註都有畫面。抓不到就擋下來 ——
+   寧可不給檔案，也不要給一份缺圖的標註稿讓對方以為是完整的。 */
+async function ensureShots(){
+  if (S.marks.every(m => m.img)) return true;
+  if (!ready){ toast('截圖還沒抓齊，請先載入對應的影片', true); return false; }
+  await recaptureAll('補抓截圖…');
+  const bad = S.marks.filter(m => !m.img).length;
+  if (bad){ toast(`有 ${bad} 個標註抓不到畫面，請確認影片`, true); return false; }
+  return true;
+}
+
+$('btnFolder').onclick = async () => {
+  if (!window.showDirectoryPicker){
+    toast('這個瀏覽器不支援直接寫資料夾，改用 ZIP');
+    return $('btnZip').click();
+  }
+  let dir;
+  try { dir = await window.showDirectoryPicker({ mode:'readwrite' }); }
+  catch(e){
+    /* Chrome 有一份系統資料夾黑名單（家目錄、Windows、Program Files…），
+       選到就跳「資料夾中包含系統檔案」，使用者按取消我們收到的是 AbortError。
+       這種時候什麼都不說最糟 —— 看起來就像按鈕壞了。 */
+    if (e && e.name === 'AbortError')
+      return toast('沒有選資料夾。被 Chrome 擋住的話，改用「下載 ZIP」最快', true);
+    toast('開不了資料夾選擇，改用 ZIP');
+    return $('btnZip').click();
+  }
+  if (!await ensureShots()) return;
+  busy(true, '寫入資料夾…', 0);
+  try {
+    const { json, md } = buildDocs();
+    const w = async (h, data) => { const s = await h.createWritable(); await s.write(data); await s.close(); };
+    /* 一定要另外開一個有名字的子資料夾。
+       直接寫進使用者選的那層，檔案會跟桌面上原本的東西混在一起，
+       事後要「開啟專案」根本認不出該選哪個資料夾。 */
+    const root = await dir.getDirectoryHandle(projName(), {create:true});
+    await w(await root.getFileHandle('標註稿.md',  {create:true}), md);
+    await w(await root.getFileHandle('marks.json', {create:true}), JSON.stringify(json, null, 2));
+    const shots = await root.getDirectoryHandle('shots', {create:true});
+    for (let i=0; i<S.marks.length; i++){
+      const name = shotName(S.marks[i], i).split('/')[1];
+      await w(await shots.getFileHandle(name, {create:true}), bytes(shotOf(S.marks[i])));
+      busy(true, '寫入資料夾…', (i+1)/(S.marks.length+1));
+    }
+    if ($('cbVideo').checked && file)
+      await w(await root.getFileHandle(S.name, {create:true}), file);
+    busy(false); dirty = false;
+    $('mOut').classList.remove('on');
+    toast(`已建立資料夾「${projName()}」，內含 ${S.marks.length} 張截圖`);
+  } catch(e){ busy(false); toast('寫入失敗：' + (e && e.message || e), true); }
+};
+
+/* ── ZIP（不壓縮，直接 store；JPEG 本來就壓過了）── */
+const CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n=0; n<256; n++){ let c=n; for (let k=0; k<8; k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; }
+  return t;
+})();
+function crc32(u){ let c = 0xFFFFFFFF; for (let i=0;i<u.length;i++) c = CRC[(c^u[i]) & 0xFF] ^ (c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zip(files){
+  const enc = new TextEncoder(), parts = [], central = [];
+  const d = new Date();
+  const dt = ((d.getFullYear()-1980)<<9) | ((d.getMonth()+1)<<5) | d.getDate();
+  const tm = (d.getHours()<<11) | (d.getMinutes()<<5) | (d.getSeconds()>>1);
+  let off = 0;
+  for (const f of files){
+    const nm = enc.encode(f.name), data = f.data, crc = crc32(data), sz = data.length;
+    const lh = new Uint8Array(30 + nm.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);                    // bit 11：檔名是 UTF-8，中文才不會變亂碼
+    lv.setUint16(8, 0, true); lv.setUint16(10, tm, true); lv.setUint16(12, dt, true);
+    lv.setUint32(14, crc, true); lv.setUint32(18, sz, true); lv.setUint32(22, sz, true);
+    lv.setUint16(26, nm.length, true); lv.setUint16(28, 0, true);
+    lh.set(nm, 30);
+    parts.push(lh, data);
+    const ch = new Uint8Array(46 + nm.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true);
+    cv.setUint16(12, tm, true); cv.setUint16(14, dt, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, sz, true); cv.setUint32(24, sz, true);
+    cv.setUint16(28, nm.length, true); cv.setUint32(42, off, true);
+    ch.set(nm, 46);
+    central.push(ch);
+    off += lh.length + sz;
+  }
+  const cdSize = central.reduce((a,b) => a + b.length, 0);
+  const end = new Uint8Array(22), ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, off, true);
+  return new Blob([...parts, ...central, end], {type:'application/zip'});
+}
+$('btnZip').onclick = async () => {
+  if (!await ensureShots()) return;
+  busy(true, '打包中…');
+  try {
+    const { json, md } = buildDocs();
+    const enc = new TextEncoder();
+    const files = [
+      { name:'標註稿.md',  data:enc.encode(md) },
+      { name:'marks.json', data:enc.encode(JSON.stringify(json, null, 2)) },
+      ...S.marks.map((m,i) => ({ name:shotName(m,i), data:bytes(shotOf(m)) }))
+    ];
+    const blob = zip(files);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = projName() + '.zip';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    busy(false); dirty = false;
+    $('mOut').classList.remove('on');
+    toast(`已下載 ${a.download}（${(blob.size/1048576).toFixed(1)} MB）`);
+  } catch(e){ busy(false); toast('打包失敗：' + (e && e.message || e), true); }
+};
+
+/* ── 小工具 ── */
+function toast(t, bad){
+  const el = $('toast');
+  el.textContent = t; el.className = 'toast on' + (bad ? ' bad' : '');
+  clearTimeout(el._t); el._t = setTimeout(() => el.className = 'toast' + (bad ? ' bad' : ''), 2600);
+}
+function busy(on, txt, pct){
+  $('busy').classList.toggle('on', !!on);
+  if (txt) $('busyTxt').textContent = txt;
+  $('busyBar').style.width = pct == null ? '0%' : (pct*100) + '%';
+}
+window.addEventListener('beforeunload', e => {
+  // 只在「標了東西但還沒匯出」時攔。匯出過就別再煩人。
+  if (dirty && S.marks.length){ e.preventDefault(); e.returnValue = ''; }
+});
+
+render();
+</script>
+</body>
+</html>
