@@ -733,43 +733,6 @@ button,input,select,textarea{font-family:inherit}
   </div>
 </div>
 
-<!-- 截圖編輯器 -->
-<div class="mask" id="mEd">
-  <div class="dlg wide">
-    <div class="dhead"><div><h3 id="edTitle">標記截圖</h3>
-      <div class="sub">在畫面上拖曳就會畫出來。標記可以重畫，原始畫面不會被改掉</div></div>
-      <button class="x" data-edclose="1">×</button></div>
-    <div class="dbody edwrap">
-      <div class="edtools">
-        <button class="tool" data-tool="arrow">↗ 箭頭</button>
-        <button class="tool" data-tool="hand">☝ 手指</button>
-        <button class="tool" data-tool="cursor">➤ 游標</button>
-        <button class="tool" data-tool="badge">① 標號</button>
-        <span class="tdiv"></span>
-        <button class="tool" data-tool="rect">▭ 框選</button>
-        <button class="tool" data-tool="mask">▓ 遮蔽</button>
-        <button class="tool" data-tool="crop">⛶ 放大擷取</button>
-        <div class="cols" id="edCols"></div>
-        <button class="tool" id="edUndo" style="margin-left:auto">↶ 復原</button>
-        <button class="tool" id="edUncrop" style="display:none">取消擷取</button>
-        <button class="tool" id="edReset">清除</button>
-      </div>
-      <div class="edcanvas"><canvas id="edCanvas"></canvas></div>
-      <div class="edhint" id="edHint"></div>
-    </div>
-    <div class="dfoot">
-      <span class="edhint" id="edCount"></span>
-      <button class="btn plain" data-edclose="1" style="margin-left:auto">取消</button>
-      <button class="btn" id="edOk">完成</button>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="filePick" accept="video/*" style="display:none">
-<input type="file" id="imgPick" accept="image/*" multiple style="display:none">
-<input type="file" id="marksPick" accept=".json,application/json" style="display:none">
-<div class="toast" id="toast"></div>
-<div class="busy" id="busy"><span id="busyTxt">處理中…</span><div class="bar"><i id="busyBar"></i></div></div>
 </div>
 
 <div class="view app-form" id="vForm">
@@ -915,6 +878,48 @@ button,input,select,textarea{font-family:inherit}
 <div class="toast" id="fToast"></div>
 </div>
 
+
+<!-- 截圖編輯器等浮層放在最外層：本來在 #vMark 裡，切到工時頁時整個 #vMark 是 display:none，編輯器就被一起藏起來了。
+     外層用 display:contents，不佔版面，.app-mark 的作用域樣式照樣套得到。 -->
+<div class="app-mark" style="display:contents">
+<!-- 截圖編輯器 -->
+<div class="mask" id="mEd">
+  <div class="dlg wide">
+    <div class="dhead"><div><h3 id="edTitle">標記截圖</h3>
+      <div class="sub">在畫面上拖曳就會畫出來。標記可以重畫，原始畫面不會被改掉</div></div>
+      <button class="x" data-edclose="1">×</button></div>
+    <div class="dbody edwrap">
+      <div class="edtools">
+        <button class="tool" data-tool="arrow">↗ 箭頭</button>
+        <button class="tool" data-tool="hand">☝ 手指</button>
+        <button class="tool" data-tool="cursor">➤ 游標</button>
+        <button class="tool" data-tool="badge">① 標號</button>
+        <span class="tdiv"></span>
+        <button class="tool" data-tool="rect">▭ 框選</button>
+        <button class="tool" data-tool="mask">▓ 遮蔽</button>
+        <button class="tool" data-tool="crop">⛶ 放大擷取</button>
+        <div class="cols" id="edCols"></div>
+        <button class="tool" id="edUndo" style="margin-left:auto">↶ 復原</button>
+        <button class="tool" id="edUncrop" style="display:none">取消擷取</button>
+        <button class="tool" id="edReset">清除</button>
+      </div>
+      <div class="edcanvas"><canvas id="edCanvas"></canvas></div>
+      <div class="edhint" id="edHint"></div>
+    </div>
+    <div class="dfoot">
+      <span class="edhint" id="edCount"></span>
+      <button class="btn plain" data-edclose="1" style="margin-left:auto">取消</button>
+      <button class="btn" id="edOk">完成</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="filePick" accept="video/*" style="display:none">
+<input type="file" id="imgPick" accept="image/*" multiple style="display:none">
+<input type="file" id="marksPick" accept=".json,application/json" style="display:none">
+<div class="toast" id="toast"></div>
+<div class="busy" id="busy"><span id="busyTxt">處理中…</span><div class="bar"><i id="busyBar"></i></div></div>
+</div>
 <script>
 /* ══════════════════════════════════════════════════════════
    合併殼層
