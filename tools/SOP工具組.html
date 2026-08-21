@@ -804,7 +804,8 @@ button,input,select,textarea{font-family:inherit}
         <div class="metaview" id="metaView"></div>
         <div class="meta">
           <div class="fld"><label>部門 <span style="color:var(--warn)">*</span></label>
-            <input class="i" id="mDept" placeholder="例：品質保證部"></div>
+            <select class="i" id="mDept"></select>
+            <input class="i" id="mDeptOther" placeholder="請輸入部門名稱" style="display:none;margin-top:6px"></div>
           <div class="fld"><label>流程題目 <span style="color:var(--warn)">*</span></label>
             <input class="i" id="mTitle" placeholder="例：供應商自主檢驗表異常稽核與退件通知"></div>
           <div class="fld"><label>填表人</label><input class="i" id="mAuthor" placeholder="姓名"></div>
@@ -2340,6 +2341,17 @@ const CFG = {
     {v:'wait',   l:'等待'},
     {v:'maint',  l:'維護'}
   ],
+  /* 部門清單。名稱一律照公司通訊錄（分機表），跟 AI 導入面板、設備調查用的是同一份 ——
+     以前這欄讓人自己打字，同一個單位就出現「物料二部／物料二課」好幾種寫法，
+     面板一分組就散成兩三條。清單上沒有的單位，填表時選「其他」自己打。
+     公司改組要更新：主檔在「AI 會議紀錄」試算表的「部門」分頁，改完把這裡一起換掉 ——
+     這支是離線用的單檔 HTML，讀不到線上主檔，只能內嵌。 */
+  depts: ['董事長室','總經理室','法務','稽核','總管理處','經營暨投資管理部','財務管理部','資訊管理部','海外事業部','營業處','銷售一部','銷售二部',
+          '銷售三部','銷售五部','銷售六部','技術一處','品保課','技術二處','開發一部','開發二部','電機開發部','技術三處','生技課','工務課',
+          '技術課','海外事業處','商品行銷處','商品行銷部','製造一處','機械一課','機械二課','機械三課','製造二部','製造三部','製造二處','生產一課',
+          '生產二課','生產三課','生產六課','業務管理處','業務管理部','生管部','全球採購處','全球採購一處','全球採購二處','成本部','模具課',
+          '採購一課','採購二課','物料部','物料一課','物料二課','物料三課','人力資源部','人事行政課','人力資源課','總務管理部','職業安全部',
+          '力科總經理室','力科人資總務','力科財務','力科營業','力科生管','力科採購','力科開發一部','力科開發二部','力科製造'],
   /* 「介面」欄的建議清單。這是提示不是限制 —— 使用者可以自己打任何字。
      要增減建議值改這一行就好，舊檔案不會受影響。 */
   ifaces: ['Excel','網頁','系統程式','TIPTOP','QMS','Outlook / 信件','Word / PDF',
@@ -2910,7 +2922,13 @@ function importFile(text){
 
 /* ── 綁定 ── */
 function fillMeta(){
-  mDept.value=S.dept; mTitle.value=S.title; mAuthor.value=S.author;
+  /* 舊檔的部門可能是清單上沒有的寫法（改組前的名稱、或當初自己打的），
+     不能把它清成空的 —— 落到「其他」欄位原樣留著，人才知道要改成哪一個 */
+  if(!S.dept){ mDept.value=''; mDeptOther.value=''; }
+  else if(CFG.depts.indexOf(S.dept)>=0){ mDept.value=S.dept; mDeptOther.value=''; }
+  else { mDept.value='__other__'; mDeptOther.value=S.dept; }
+  syncDeptUI();
+  mTitle.value=S.title; mAuthor.value=S.author;
   mVol.value=S.volume??''; mRunEvery.value=S.runEvery??1;
   mRunFreq.value=S.runFreq||'day'; mRunHc.value=S.runHc??1;
 }
@@ -2925,9 +2943,26 @@ document.getElementById('mRunFreq').innerHTML=opt(FREQS,'day');
 });
 document.getElementById('ifaceList').innerHTML=
   CFG.ifaces.map(s=>`<option value="${esc(s)}">`).join('');
-['mDept','mTitle','mAuthor'].forEach(id=>{
+mDept.innerHTML='<option value="">請選擇部門</option>'+
+  CFG.depts.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('')+
+  '<option value="__other__">其他（自行填寫）</option>';
+/* 選「其他」才把自填欄叫出來。平常藏著，免得有人視而不見直接打字，
+   又生出一個清單上沒有的寫法 */
+function syncDeptUI(){
+  mDeptOther.style.display = (mDept.value==='__other__') ? '' : 'none';
+}
+function deptValue(){
+  return mDept.value==='__other__' ? mDeptOther.value.trim() : mDept.value;
+}
+mDept.addEventListener('change',()=>{
+  syncDeptUI();
+  if(mDept.value==='__other__') mDeptOther.focus();
+  S.dept=deptValue(); mark(); renderChecks();
+});
+mDeptOther.addEventListener('input',()=>{ S.dept=deptValue(); mark(); renderChecks(); });
+['mTitle','mAuthor'].forEach(id=>{
   document.getElementById(id).addEventListener('input',e=>{
-    S[{mDept:'dept',mTitle:'title',mAuthor:'author'}[id]]=e.target.value; mark(); renderChecks();
+    S[{mTitle:'title',mAuthor:'author'}[id]]=e.target.value; mark(); renderChecks();
   });
 });
 document.addEventListener('click',e=>{
