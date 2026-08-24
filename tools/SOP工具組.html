@@ -509,8 +509,11 @@ button,input,select,textarea{font-family:inherit}
 .app-form #metaCard.summary .metaview{display:flex}
 .app-form #metaCard.summary .chead{margin-bottom:2px}
 .app-form .meta .fld.wide .vol{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.app-form .meta #mRunFreq{width:104px;flex:none}
-.app-form .meta #mRunEvery,.app-form .meta #mVol,.app-form .meta #mRunHc{width:66px;flex:none}
+.app-form .runbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink2);font-size:13px}
+.app-form .runbar select{width:104px;flex:none}
+.app-form .runbar input{width:66px;flex:none}
+.app-form .segs{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
 .app-form .lnk{appearance:none;border:0;background:none;cursor:pointer;font-family:inherit;
   color:var(--brand);font-size:11.5px;text-decoration:underline;text-underline-offset:2px;
   padding:2px 5px;white-space:nowrap}
@@ -809,19 +812,6 @@ button,input,select,textarea{font-family:inherit}
           <div class="fld"><label>流程題目 <span style="color:var(--warn)">*</span></label>
             <input class="i" id="mTitle" placeholder="例：供應商自主檢驗表異常稽核與退件通知"></div>
           <div class="fld"><label>填表人</label><input class="i" id="mAuthor" placeholder="姓名"></div>
-          <div class="fld wide"><label>這條流程</label>
-            <div class="vol">
-              <span class="fx">每</span>
-              <input class="i n2" id="mRunEvery" type="number" min="0" step="any" value="1">
-              <select class="i" id="mRunFreq"></select>
-              <span class="dot">，</span>
-              <input class="i n2" id="mVol" type="number" min="0" step="1" placeholder="176">
-              <span class="fx">次</span>
-              <span class="dot">，</span>
-              <span class="fx">共</span>
-              <input class="i n2" id="mRunHc" type="number" min="1" step="1" value="1">
-              <span class="fx">人</span>
-            </div></div>
         </div>
       </div>
 
@@ -835,6 +825,18 @@ button,input,select,textarea{font-family:inherit}
               <b>檔案／任務</b>　在處理什麼東西　　<b>介面</b>　在哪裡做
             </span></h3><div class="sub">現在實際怎麼做，一步一步填</div></div>
             <div style="font-size:12px;color:var(--ink3)">點步驟後可直接 <b>Ctrl+V</b> 貼上截圖</div></div>
+          <div class="runbar">
+            <span class="fx">這條流程　每</span>
+            <input class="i n2" id="nowEvery" type="number" min="0" step="any" value="1">
+            <select class="i" id="nowFreq"></select>
+            <span class="dot">，</span>
+            <input class="i n2" id="nowVol" type="number" min="0" step="1" placeholder="176">
+            <span class="fx">次</span>
+            <span class="dot">，</span>
+            <span class="fx">共</span>
+            <input class="i n2" id="nowHc" type="number" min="1" step="1" value="1">
+            <span class="fx">人</span>
+          </div>
           <div class="steps" id="listNow"></div>
           <div style="padding:0 10px 14px"><button class="addrow" data-add="now">＋ 新增步驟</button></div>
         </div>
@@ -850,6 +852,19 @@ button,input,select,textarea{font-family:inherit}
               維護與審核一定要有，不然效益會高估
             </span></h3>
             <div class="sub">未來怎麼做，一樣一步一步填 —— 兩條流程各自獨立，不必對應</div></div></div>
+          <div class="runbar">
+            <span class="fx">這條流程　每</span>
+            <input class="i n2" id="aftEvery" type="number" min="0" step="any" value="1">
+            <select class="i" id="aftFreq"></select>
+            <span class="dot">，</span>
+            <input class="i n2" id="aftVol" type="number" min="0" step="1" placeholder="176">
+            <span class="fx">次</span>
+            <span class="dot">，</span>
+            <span class="fx">共</span>
+            <input class="i n2" id="aftHc" type="number" min="1" step="1">
+            <span class="fx">人</span>
+            <span class="fx" id="aftRunTip" style="color:var(--ink3);font-size:12px"></span>
+          </div>
           <div class="steps" id="listAft"></div>
           <div style="padding:0 10px 14px"><button class="addrow" data-add="aft">＋ 新增步驟</button></div>
           <div style="padding:0 14px 16px"><div class="note amber">
@@ -890,7 +905,7 @@ button,input,select,textarea{font-family:inherit}
       <div class="card kpi">
         <div class="krow">
           <div class="lab" id="kLab">現況工時</div>
-          <div class="seg" id="segSide"></div>
+          <div class="segs"><div class="seg" id="segSide"></div><div class="seg" id="segTime"></div></div>
         </div>
         <div class="big" id="kBig">—</div>
         <div class="sub" id="kSub">請先填基本資料</div>
@@ -2378,9 +2393,13 @@ const AL=Object.fromEntries(CFG.acts.map(a=>[a.v,a.l]));    // 第二層標籤
 const KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
 const PM=Object.fromEntries(PERIODS.map(p=>[p.v,p.pm]));
 /* 顯示單位：預設用「平均每日」，因為每日的數字最有體感 */
-const SHOWS=[{v:'day',l:'每日',d:D,u:'人時/日'},
-             {v:'week',l:'每週',d:W,u:'人時/週'},
-             {v:'month',l:'每月',d:1,u:'人時/月'}];
+const SHOWS=[{v:'day',l:'每日',d:D,p:'日'},
+             {v:'week',l:'每週',d:W,p:'週'},
+             {v:'month',l:'每月',d:1,p:'月'}];
+/* 工時的時間單位。步驟只花幾秒的流程，看「0.02 人時」沒感覺，看「1.2 人分」才有 */
+const SHOWTIMES=[{v:'hr',l:'時',n:'人時',m:1},
+                 {v:'min',l:'分',n:'人分',m:60},
+                 {v:'sec',l:'秒',n:'人秒',m:3600}];
 const SCHEMA='sop-timesheet/3';
 const SCHEMAS_OLD=['sop-timesheet/2','sop-timesheet/1'];
 const DRAFT='sopEditorDraft/3';
@@ -2391,8 +2410,9 @@ let S=blank(), active=null, activeList=null, dirty=false, saveFailed=false;
 function blank(){
   return {schema:SCHEMA, dept:'', title:'', author:'',
           volume:null, volEvery:1, volumePer:'day',   // 處理量：N 件 / 每 M 個單位
-          runEvery:1, runFreq:'day', runHc:1,         // 整條流程：多久跑一輪、幾個人做
-          showUnit:'day',                             // 畫面上工時用什麼單位顯示
+          runEvery:1, runFreq:'day', runHc:1,         // 現況這條流程：多久跑一輪、幾個人做
+          aftVolume:null, aftEvery:null, aftFreq:'', aftHc:null,   // AI 導入後那條；留空＝沿用現況
+          showUnit:'day', showTime:'hr',              // 畫面上工時用什麼單位顯示
           now:[], aft:[], updatedAt:null};
 }
 /* 新步驟的預設值：第一層在現況頁給「人工」、AI 導入後頁給「AI」；
@@ -2481,7 +2501,13 @@ function adopt(d){
       + `已統一成整條流程的設定，那幾步的工時請自己覆核一次`, true), 500);
     all.forEach(x=>{ delete x.freq; delete x.every; delete x.hc; });
   }
+  /* 舊檔只有一組「這條流程」，現況與 AI 後共用。分開之後，舊檔的 AI 後沿用現況那組 ——
+     數字跟以前一模一樣，人再自己去調導入後的頻率與人數 */
+  if(!('aftFreq' in d)){
+    o.aftFreq=o.runFreq; o.aftEvery=o.runEvery; o.aftHc=o.runHc; o.aftVolume=o.volume;
+  }
   if(!SHOWS.some(s=>s.v===o.showUnit)) o.showUnit='day';
+  if(!SHOWTIMES.some(s=>s.v===o.showTime)) o.showTime='hr';
   o.schema=SCHEMA;
   return o;
 }
@@ -2494,11 +2520,24 @@ function adopt(d){
      一個月做幾輪   = 該週期的月次數 ÷ every（不定期 = 0，不計入）
      月人時         = 一輪秒數 × 月輪數 ÷ 3600
    畫面上再依「顯示單位」除以每月工作日數／週數                        */
-/* 頻率與人數是整條流程的屬性，不是步驟的 */
-function fq(){ return S.runFreq || 'day'; }
-function ev(){ const v=Number(S.runEvery); return v>0?v:1; }
-function hc(){ const v=Number(S.runHc); return v>0?v:1; }
-function occ(){ return fq()==='none'?0:PM[fq()]/ev(); }
+/* 頻率、次數、人數是「這一條流程」的屬性，不是步驟的 ——
+   而且現況與 AI 導入後各有一組：導入後常常是頻率變低或人數變少，
+   那正是效益的來源，共用一組就看不出來了 */
+function RUN(l){
+  if(l!=='aft') return {every:S.runEvery, freq:S.runFreq, hc:S.runHc, vol:S.volume};
+  /* AI 後沒填的欄位一律沿用現況 —— 導入後多半是「同樣的量、花的時間變少」，
+     沒填就當成 1 次會讓效益整個灌水，那種數字主管一問就破功 */
+  const pick=(a,b)=>(a==null||a==='')?b:a;
+  return {every:pick(S.aftEvery,S.runEvery), freq:pick(S.aftFreq,S.runFreq),
+          hc:pick(S.aftHc,S.runHc), vol:pick(S.aftVolume,S.volume)};
+}
+/* 步驟自己不記得屬於哪一邊，從陣列反推 —— 步驟數不多，
+   這比把 list 一路傳進十幾個呼叫點乾淨得多 */
+function listOf(st){ return S.aft.indexOf(st)>=0 ? 'aft' : 'now'; }
+function fq(l){ return RUN(l).freq || 'day'; }
+function ev(l){ const v=Number(RUN(l).every); return v>0?v:1; }
+function hc(l){ const v=Number(RUN(l).hc); return v>0?v:1; }
+function occ(l){ return fq(l)==='none'?0:PM[fq(l)]/ev(l); }
 function secs(st){
   if(st.dur==null||st.dur==='') return null;
   const u=UNITS.find(x=>x.v===st.unit)||UNITS[1];
@@ -2507,20 +2546,28 @@ function secs(st){
 /* 次數是整條流程的量，會進工時。
    份數只是記錄「這一步每一次處理幾份」，純敘述用，不進工時 ——
    因為「每次多久」量到的本來就是處理完那幾份的時間，再乘一次會重複計算 */
-function vol(){ const v=Number(S.volume); return v>0?v:1; }
-function mh(st){                                  // 月人時；null 表示資料不足
+function vol(l){ const v=Number(RUN(l).vol); return v>0?v:1; }
+function mh(st,l){                                // 月人時；null 表示資料不足
   const s=secs(st);
   if(s==null) return null;
-  return s*vol()*hc()*occ()/3600;
+  l = l || listOf(st);
+  return s*vol(l)*hc(l)*occ(l)/3600;
 }
 function sum(list){
   let t=0, complete=true;
   list.forEach(st=>{const m=mh(st); if(m==null) complete=false; else t+=m;});
   return {total:t, complete};
 }
-/* 顯示單位換算 */
-function U(){ return SHOWS.find(s=>s.v===S.showUnit)||SHOWS[0]; }
-const cv=m=>m==null?null:m/U().d;
+/* 顯示單位換算。U() 把單位字串一起組好回傳，
+   這樣十幾個顯示點都不用管現在選的是人時還人分 */
+function T(){ return SHOWTIMES.find(s=>s.v===S.showTime)||SHOWTIMES[0]; }
+function U(){
+  const s=SHOWS.find(x=>x.v===S.showUnit)||SHOWS[0];
+  return {v:s.v, l:s.l, d:s.d, p:s.p, u:T().n+'/'+s.p};
+}
+const cv=m=>m==null?null:m/U().d*T().m;
+/* 成本那塊的文案寫死「小時 × 60 分」，所以那裡要固定用人時，不跟著切單位 */
+const cvH=m=>m==null?null:m/U().d;
 const fmt=n=>n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
             :(n>0&&n<0.01?'<0.01':n.toFixed(2));
 
@@ -2648,13 +2695,18 @@ function paintMeta(){
   const card = document.getElementById('metaCard');
   card.classList.toggle('summary', cmp);
   if(!cmp) return;
-  const F = FREQS.find(x=>x.v===(S.runFreq||'day'));
+  /* 兩邊的節奏各寫一段，不同的地方一眼看得出來 */
+  const say=l=>{
+    const r=RUN(l), F=FREQS.find(x=>x.v===(r.freq||'day'));
+    return `每 ${r.every||1} ${F?F.l:''}，${r.vol??'—'} 次，共 ${r.hc||1} 人`;
+  };
+  const nowSay=say('now'), aftSay=say('aft');
   document.getElementById('metaView').innerHTML =
     `<span><b>${esc(S.dept||'—')}</b></span><span class="sep">·</span>`
    +`<span>${esc(S.title||'（尚未填流程題目）')}</span>`
    +(S.author?`<span class="sep">·</span><span>${esc(S.author)}</span>`:'')
-   +`<span class="sep">·</span><span>每 ${S.runEvery||1} ${F?F.l:''}，`
-   +`${S.volume??'—'} 次，共 ${S.runHc||1} 人</span>`;
+   +`<span class="sep">·</span><span>現況 ${nowSay}</span>`
+   +(aftSay===nowSay?'':`<span class="sep">·</span><span>AI 後 ${aftSay}</span>`);
 }
 function curTab(){
   const p=document.querySelector('.tab.on').dataset.p;
@@ -2709,11 +2761,11 @@ function renderCmp(){
   const costNow=money(rn.total), costAft=money(ra.total);
   const save=(costNow!=null&&costAft!=null)?costNow-costAft:null;
   document.getElementById('cmp3').innerHTML=
-   `<div><div class="l">現況成本</div><div class="n">${NT(cv(costNow))} <small>元/${un}</small></div>
-      <div class="s">${f3(cv(rn.total))} 小時 × 60 分 × ${CFG.rate} 元</div></div>
-    <div><div class="l">AI 導入後成本</div><div class="n">${NT(cv(costAft))} <small>元/${un}</small></div>
+   `<div><div class="l">現況成本</div><div class="n">${NT(cvH(costNow))} <small>元/${un}</small></div>
+      <div class="s">${f3(cvH(rn.total))} 小時 × 60 分 × ${CFG.rate} 元</div></div>
+    <div><div class="l">AI 導入後成本</div><div class="n">${NT(cvH(costAft))} <small>元/${un}</small></div>
       <div class="s">${bothReady
-        ? f3(cv(ra.total))+' 小時 × 60 分 × '+CFG.rate+' 元（已含維護）'
+        ? f3(cvH(ra.total))+' 小時 × 60 分 × '+CFG.rate+' 元（已含維護）'
         : '兩版都填了才算得出來'}</div></div>
     <div><div class="l">一年省下</div>
       <div class="n" style="color:${save>0?'var(--ai)':'var(--ink3)'}">${NT(save==null?null:save*12)} <small>元</small></div>
@@ -2842,10 +2894,23 @@ function renderChecks(){
 }
 
 function renderSegs(){
-  const html=SHOWS.map(s=>`<button data-u="${s.v}" class="${s.v===S.showUnit?'on':''}">${s.l}</button>`).join('');
-  document.getElementById('segSide').innerHTML=html;
+  document.getElementById('segSide').innerHTML=
+    SHOWS.map(s=>`<button data-u="${s.v}" class="${s.v===S.showUnit?'on':''}">${s.l}</button>`).join('');
+  document.getElementById('segTime').innerHTML=
+    SHOWTIMES.map(s=>`<button data-t="${s.v}" class="${s.v===S.showTime?'on':''}">${s.l}</button>`).join('');
 }
-function render(){ renderSegs(); renderList('now'); renderList('aft'); renderCmp(); renderSide(); renderChecks(); }
+/* AI 後留空代表沿用現況，那就把現況的值寫進 placeholder，
+   不然欄位空白、工時卻有數字，看起來像壞掉 */
+function syncAftHints(){
+  const F=FREQS.find(x=>x.v===(S.runFreq||'day'));
+  aftEvery.placeholder=String(S.runEvery??1);
+  aftVol.placeholder=S.volume==null?'跟現況一樣':String(S.volume);
+  aftHc.placeholder=String(S.runHc??1);
+  const tip=document.getElementById('aftRunTip');
+  if(tip) tip.textContent='留空＝跟現況一樣（每 '+(S.runEvery??1)+' '+(F?F.l:'')+
+    '，'+(S.volume??'—')+' 次，共 '+(S.runHc??1)+' 人）';
+}
+function render(){ renderSegs(); renderList('now'); renderList('aft'); renderCmp(); renderSide(); renderChecks(); syncAftHints(); }
 
 /* ── 草稿 ── */
 function mark(){ dirty=true; S.updatedAt=new Date().toISOString(); saveDraft(); }
@@ -2925,15 +2990,23 @@ function fillMeta(){
   else { mDept.value='__other__'; mDeptOther.value=S.dept; }
   syncDeptUI();
   mTitle.value=S.title; mAuthor.value=S.author;
-  mVol.value=S.volume??''; mRunEvery.value=S.runEvery??1;
-  mRunFreq.value=S.runFreq||'day'; mRunHc.value=S.runHc??1;
+  nowVol.value=S.volume??''; nowEvery.value=S.runEvery??1;
+  nowFreq.value=S.runFreq||'day'; nowHc.value=S.runHc??1;
+  aftVol.value=S.aftVolume??''; aftEvery.value=S.aftEvery??'';
+  aftFreq.value=S.aftFreq||S.runFreq||'day'; aftHc.value=S.aftHc??'';
 }
-document.getElementById('mRunFreq').innerHTML=opt(FREQS,'day');
-/* 整條流程的頻率與人數：改了要把所有沒覆寫的步驟一起重算 */
-[['mRunEvery','runEvery'],['mRunFreq','runFreq'],['mRunHc','runHc']].forEach(([id,key])=>{
+nowFreq.innerHTML=opt(FREQS,'day');
+aftFreq.innerHTML=opt(FREQS,'day');
+/* 兩條流程各自的頻率、次數、人數。改了整欄工時都要重算 */
+[['nowEvery','runEvery'],['nowFreq','runFreq'],['nowHc','runHc'],['nowVol','volume'],
+ ['aftEvery','aftEvery'],['aftFreq','aftFreq'],['aftHc','aftHc'],['aftVol','aftVolume']].forEach(([id,key])=>{
   document.getElementById(id).addEventListener('input',e=>{
     const raw=e.target.value;
-    S[key] = (key==='runFreq') ? raw : (Number(raw)>0?Number(raw):1);
+    if(key==='runFreq'||key==='aftFreq') S[key]=raw;
+    else if(key==='volume'||key==='aftVolume') S[key]= raw===''?null:(Number(raw)>0?Number(raw):null);
+    /* AI 後那三個清空是有意義的：代表沿用現況，不能被塞成 1 */
+    else if(key==='aftEvery'||key==='aftHc') S[key]= raw===''?null:(Number(raw)>0?Number(raw):null);
+    else S[key]= Number(raw)>0?Number(raw):1;
     mark(); render();
   });
 });
@@ -2965,12 +3038,8 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-allqty]'); if(!b) return;
   const row=e.target.closest('.step'); if(!row) return;
   const st=(S[row.dataset.list]||[]).find(x=>x.id===row.dataset.id); if(!st) return;
-  st.qty=Number(S.volume)||1; mark(); render();
-});
-document.getElementById('mVol').addEventListener('input',e=>{
-  const v=e.target.value===''?null:Number(e.target.value);
-  S.volume=(v!=null&&v>=0)?v:null; mark();
-  refreshCalc('now'); refreshCalc('aft'); renderCmp(); renderSide(); renderChecks();
+  /* 「份數＝這條流程的次數」那顆按鈕：兩邊各有各的次數，要取這一步所屬那一邊的 */
+  st.qty=vol(row.dataset.list)||1; mark(); render();
 });
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
@@ -2985,7 +3054,8 @@ document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
 /* 顯示單位切換（側欄與對照頁共用） */
 document.addEventListener('click',e=>{
   const b=e.target.closest('.seg button'); if(!b) return;
-  S.showUnit=b.dataset.u; mark(); render();
+  if(b.dataset.t) S.showTime=b.dataset.t; else S.showUnit=b.dataset.u;
+  mark(); render();
 });
 /* 對照頁點步驟 → 跳回對應分頁並選取 */
 document.addEventListener('click',e=>{
@@ -3333,6 +3403,7 @@ h1,h2,h3,h4{margin:0;font-weight:700}
       <button class="sb" data-v="v-aft">AI 導入後流程</button>
     </div>
     <div class="seg" id="seg"></div>
+    <div class="seg" id="segT"></div>
   </div>
   <div class="v on" id="v-cmp">
     <div class="s3" id="stat"></div>
@@ -3359,23 +3430,37 @@ var D=(DATA.config&&DATA.config.daysPerMonth)||20.8, W=(DATA.config&&DATA.config
 var PM={day:D,week:W,month:1,quarter:1/3,year:1/12};
 var UN={sec:1,min:60,hr:3600}, UL={sec:'秒',min:'分',hr:'小時'};
 var PL={day:'日',week:'週',month:'月',quarter:'季',year:'年'};
-var SH=[{v:'day',l:'每日',d:D,u:'人時/日'},{v:'week',l:'每週',d:W,u:'人時/週'},{v:'month',l:'每月',d:1,u:'人時/月'}];
-var cur=DATA.showUnit||'day';
-function U(){ for(var i=0;i<SH.length;i++) if(SH[i].v===cur) return SH[i]; return SH[0]; }
-function cv(m){ return m==null?null:m/U().d; }
-/* 頻率與人數是整條流程的屬性 */
-function fq(){ return DATA.runFreq || 'day'; }
-function ev(){ var v=Number(DATA.runEvery); return v>0?v:1; }
-function hcOf(){ var v=Number(DATA.runHc); return v>0?v:1; }
-function occ(){ return fq()==='none'?0:PM[fq()]/ev(); }
-function FLT(){ if(fq()==='none')return '不定期';
-  var n=ev(), u=PL[fq()]||''; return n===1?'每'+u:'每 '+n+' '+u; }
+var SH=[{v:'day',l:'每日',d:D,p:'日'},{v:'week',l:'每週',d:W,p:'週'},{v:'month',l:'每月',d:1,p:'月'}];
+/* 步驟只花幾秒的流程，看「0.02 人時」沒感覺，看「1.2 人分」才有 */
+var STS=[{v:'hr',l:'時',n:'人時',m:1},{v:'min',l:'分',n:'人分',m:60},{v:'sec',l:'秒',n:'人秒',m:3600}];
+var cur=DATA.showUnit||'day', curT=DATA.showTime||'hr';
+function TU(){ for(var i=0;i<STS.length;i++) if(STS[i].v===curT) return STS[i]; return STS[0]; }
+function U(){ var b=SH[0];
+  for(var i=0;i<SH.length;i++) if(SH[i].v===cur) b=SH[i];
+  return {v:b.v,l:b.l,d:b.d,p:b.p,u:TU().n+'/'+b.p}; }
+function cv(m){ return m==null?null:m/U().d*TU().m; }
+/* 頻率、次數、人數是「這一條流程」的屬性，而且現況與 AI 導入後各有一組。
+   舊檔沒有 aft* 欄位，就沿用現況那組，數字跟以前一樣 */
+function RUN(l){
+  if(l!=='aft') return {every:DATA.runEvery, freq:DATA.runFreq, hc:DATA.runHc, vol:DATA.volume};
+  var pick=function(a,b){ return (a==null||a==='')?b:a; };
+  return {every:pick(DATA.aftEvery,DATA.runEvery), freq:pick(DATA.aftFreq,DATA.runFreq),
+          hc:pick(DATA.aftHc,DATA.runHc), vol:pick(DATA.aftVolume,DATA.volume)};
+}
+function fq(l){ return RUN(l).freq || 'day'; }
+function ev(l){ var v=Number(RUN(l).every); return v>0?v:1; }
+function hcOf(l){ var v=Number(RUN(l).hc); return v>0?v:1; }
+function occ(l){ return fq(l)==='none'?0:PM[fq(l)]/ev(l); }
+function FLT(l){ if(fq(l)==='none')return '不定期';
+  var n=ev(l), u=PL[fq(l)]||''; return n===1?'每'+u:'每 '+n+' '+u; }
 function DUR(s){ return (s.dur==null||s.dur==='')?'—':s.dur+' '+(UL[s.unit]||''); }
-function VOL(){ var v=Number(DATA.volume); return v>0?v:1; }
-function VOLQ(){ var v=Number(DATA.volume); return v>0?v:1; }
+function VOLQ(l){ var v=Number(RUN(l).vol); return v>0?v:1; }
+/* 步驟自己不記得屬於哪一邊，從陣列反推 */
+function listOf(s){ return (DATA.aft||[]).indexOf(s)>=0 ? 'aft' : 'now'; }
 /* 份數不進工時：每次時間量到的就是處理完那幾份的時間 */
-function mh(s){ if(s.dur==null||s.dur==='')return null;
-  return Number(s.dur)*(UN[s.unit]||60)*VOLQ()*hcOf()*occ()/3600; }
+function mh(s,l){ if(s.dur==null||s.dur==='')return null;
+  l = l || listOf(s);
+  return Number(s.dur)*(UN[s.unit]||60)*VOLQ(l)*hcOf(l)*occ(l)/3600; }
 function f(n){ return n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
   :(n>0&&n<0.01?'<0.01':n.toFixed(2)); }
 function tot(a){ var t=0; a.forEach(function(s){var m=mh(s); if(m!=null)t+=m;}); return t; }
@@ -3383,20 +3468,26 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
 var NOW=DATA.now||[], AFT=DATA.aft||[], tn=tot(NOW), ta=tot(AFT);
-var all=NOW.concat(AFT).map(mh).filter(function(v){return v!=null;});
+var one=function(s){ return mh(s); };   // map 會多傳 index，包一層免得被當成 list
+var all=NOW.concat(AFT).map(one).filter(function(v){return v!=null;});
 var GMAX=all.length?Math.max.apply(null,all):0;
-var pkN=Math.max.apply(null,NOW.map(mh).map(function(v){return v||0;}).concat([0]));
-var pkA=Math.max.apply(null,AFT.map(mh).map(function(v){return v||0;}).concat([0]));
+var pkN=Math.max.apply(null,NOW.map(one).map(function(v){return v||0;}).concat([0]));
+var pkA=Math.max.apply(null,AFT.map(one).map(function(v){return v||0;}).concat([0]));
 
 document.getElementById('h-title').textContent=DATA.title||'（未填題目）';
 document.getElementById('h-meta').textContent=[DATA.dept||'（未填部門）',
   DATA.author?'填表：'+DATA.author:'', DATA.exportedAt?'匯出於 '+DATA.exportedAt.slice(0,10):'']
   .filter(Boolean).join('　·　');
-document.getElementById('h-vol').innerHTML=DATA.volume>0?
-  '處理量<b>'+DATA.volume+'</b>件 / 每 '+(Number(DATA.volEvery)>1?DATA.volEvery+' ':'')+(PL[DATA.volumePer]||''):'';
+(function(){
+  var say=function(l){ var r=RUN(l); return FLT(l)+'，'+(r.vol>0?r.vol:'—')+' 次，共 '+hcOf(l)+' 人'; };
+  var a=say('now'), b=say('aft');
+  document.getElementById('h-vol').innerHTML =
+    a===b ? '這條流程　<b>'+a+'</b>'
+          : '現況　<b>'+a+'</b>　·　AI 後　<b>'+b+'</b>';
+})();
 
 function node(s,i,isAft,pk,showPct,colTot){
-  var m=mh(s), na=(m==null), hot=(m!=null&&m===pk&&m>0);
+  var m=mh(s,isAft?'aft':'now'), na=(m==null), hot=(m!=null&&m===pk&&m>0);
   var w=(m!=null&&GMAX>0)?Math.max(m/GMAX*100,m>0?1:0):0;
   return '<div class="node'+(isAft?' aft':'')+(hot?' hot':'')+(na?' na':'')+'">'+
    (s.thumb?'<div class="nt" data-full="'+(s.full||s.thumb)+'"><img src="'+s.thumb+'" alt=""></div>'
@@ -3408,7 +3499,7 @@ function node(s,i,isAft,pk,showPct,colTot){
    (s.obj?'<span class="p o">'+esc(s.obj)+'</span>':'')+
    (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
    '<span class="p'+(hot?' r':'')+'">每次 '+DUR(s)+' · '+(Number(s.qty)||1)+' 份 · '+
-     FLT()+' · '+hcOf()+' 人</span>'+
+     FLT(isAft?'aft':'now')+' · '+hcOf(isAft?'aft':'now')+' 人</span>'+
    '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
      (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
    '</div><div class="sc"><i style="width:'+w+'%;background:'+
@@ -3443,6 +3534,8 @@ function paint(){
   for(var k=0;k<uu.length;k++) uu[k].textContent=u.u;
   document.getElementById('seg').innerHTML=SH.map(function(x){
     return '<button data-u="'+x.v+'"'+(x.v===cur?' class="on"':'')+'>'+x.l+'</button>';}).join('');
+  document.getElementById('segT').innerHTML=STS.map(function(x){
+    return '<button data-t="'+x.v+'"'+(x.v===curT?' class="on"':'')+'>'+x.l+'</button>';}).join('');
   document.getElementById('ft').textContent=
     '換算基準：每月 '+D+' 個工作日、'+W+' 週　·　目前顯示單位：'+u.l+
     '　·　由 SOP 工時盤點填表器產出';
@@ -3463,6 +3556,8 @@ var lb=document.getElementById('lb');
 document.addEventListener('click',function(e){
   var b=e.target.closest?e.target.closest('#seg button'):null;
   if(b){ cur=b.getAttribute('data-u'); paint(); return; }
+  var bt=e.target.closest?e.target.closest('#segT button'):null;
+  if(bt){ curT=bt.getAttribute('data-t'); paint(); return; }
   var t=e.target.closest?e.target.closest('[data-full]'):null;
   if(t){ document.getElementById('lbi').src=t.getAttribute('data-full'); lb.classList.add('on'); }
   else if(e.target.closest&&e.target.closest('.lb')) lb.classList.remove('on');
