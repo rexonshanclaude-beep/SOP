@@ -698,7 +698,7 @@ button,input,select,textarea{font-family:inherit}
   <div class="tools">
     <button class="tb" id="btnOpen">匯入影片</button>
     <button class="tb" id="btnMarks"
-      title="marks.json，或先前匯出的圖解／簡報 HTML">載入標註檔</button>
+      title="選你之前匯出的簡報版或書面版 HTML，接著改">開啟既有檔案</button>
     <button class="tb" id="btnDemo">載入範例</button>
     <button class="tb" id="btnClear">清空</button>
     <button class="tb go" id="btnOut" disabled>匯出<span class="n" id="outN">0</span></button>
@@ -769,7 +769,7 @@ button,input,select,textarea{font-family:inherit}
       <div class="olab">給人看 —— 圖解步驟</div>
       <div class="big2">
         <div class="occ rec">
-          <b>文件版（HTML）</b>
+          <b>書面版（HTML）</b>
           <small>一步一塊，圖大字少<br>單一檔案，寄出去就能看</small>
           <div class="orow">
             <button class="ob" data-guide="doc" data-act="preview">預覽</button>
@@ -787,7 +787,7 @@ button,input,select,textarea{font-family:inherit}
       </div>
       <div class="big2">
         <button id="btnPdf"><b>列印 / 存成 PDF</b>
-          <small>用文件版開列印窗，選「儲存為 PDF」<br>每一步不會被切到下一頁</small></button>
+          <small>用書面版開列印窗，選「儲存為 PDF」<br>每一步不會被切到下一頁</small></button>
       </div>
 
       <div class="olab">給 AI —— 讓它幫你算工時</div>
@@ -1242,7 +1242,7 @@ function openVideo(f){
     return toast('這看起來不是影片檔', true);
   /* 換一支影片時，舊標註的時間點對不上新影片，截圖也是舊的 ——
      留著只會產出一份看起來正常、其實張冠李戴的標註稿。先問清楚。
-     （先載標註檔再開影片時檔名會一致，不會問到） */
+     （先開既有檔案再載影片時檔名會一致，不會問到） */
   if (S.marks.length && S.name && S.name !== f.name){
     if (!confirm(`目前有 ${S.marks.length} 個標註是「${S.name}」的。\n` +
                  `換成「${f.name}」會把它們清掉，確定？`)) return;
@@ -1374,11 +1374,13 @@ document.addEventListener('paste', e => {
   if (items.length && !inField)
     toast('剪貼簿裡沒有圖片（截圖工具剪完再貼，或直接拖檔進來）', true);
 });
-/* 拖進來的東西自己分辨：圖片、影片、還是標註檔 */
+/* 拖進來的東西自己分辨：圖片、影片、還是先前匯出的檔案。
+   HTML 也要收 —— 大家手邊留的就是那個簡報版／書面版，
+   只認 .json 的話拖進來會被當成影片，開不起來還不知道為什麼 */
 stage.addEventListener('drop', e => {
   e.preventDefault(); stage.classList.remove('over');
   const files = [...(e.dataTransfer.files || [])];
-  const mj = files.find(f => /\.json$/i.test(f.name));
+  const mj = files.find(f => /\.(json|html?)$/i.test(f.name));
   if (mj) return loadMarksFile(mj);
   const imgs = files.filter(isImg);
   if (imgs.length) return addImages(imgs);
@@ -1951,10 +1953,11 @@ async function recaptureAll(label){
   busy(false); render();
 }
 
-/* ══════════════ 載入標註檔 ══════════════
-   影片與 marks.json 各載各的，順序無所謂。
-   marks.json 裡記著當初那支影片的檔名，兩邊對不上時會先問過再套，
-   免得把標註的時間點套到別支影片上 —— 那種錯畫面全歪，而且看不出來。 */
+/* ══════════════ 開啟既有檔案 ══════════════
+   吃三種：自己匯出的簡報版 HTML、書面版 HTML，以及 ZIP 裡的 marks.json。
+   影片與檔案各載各的，順序無所謂。
+   檔案裡記著當初那支影片的檔名，兩邊對不上時會先問過再套，
+   免得把時間點套到別支影片上 —— 那種錯畫面全歪，而且看不出來。 */
 async function loadMarksFile(f){
   const text = await f.text();
   let d = null, baked = [];
@@ -1977,13 +1980,22 @@ async function loadMarksFile(f){
       });
     }
   }
-  if (!d || !Array.isArray(d.marks))
-    return toast('這不是標註檔 —— 要選 marks.json，或匯出的圖解／簡報 HTML', true);
-  if (!d.marks.length) return toast('這個標註檔裡沒有任何標註', true);
+  if (!d || !Array.isArray(d.marks)){
+    /* 三種情況要分清楚，不然使用者只會覺得「工具壞了」：
+       ① 拿錯成工時那邊的交件檔 ② 是我們匯出的、但那時還沒開始存資料 ③ 根本不相干的檔案。
+       ②最常見也最有解 —— 直接告訴他重匯一次就好 */
+    if (/sop-timesheet/.test(text))
+      return toast('這是「SOP 工時紀錄」的交件檔 —— 請到上面第 2 頁，用那邊的「開啟既有檔案」', true);
+    if (/由 SOP 工具組產生|class="sfig"|class="pg cov"|_圖解SOP|data-full=/.test(text))
+      return toast('這份是舊版匯出的，檔案裡沒有存編輯資料 —— '
+                 + '重新做一次並匯出後，之後那個檔案就能直接開回來改', true);
+    return toast('這個檔案讀不出東西 —— 請選你匯出的簡報版或書面版 HTML', true);
+  }
+  if (!d.marks.length) return toast('這個檔案裡沒有任何步驟', true);
 
   const want = d.video && d.video.name;
   if (ready && want && S.name && want !== S.name &&
-      !confirm(`這份標註檔是「${want}」的，目前開的是「${S.name}」。\n` +
+      !confirm(`這份檔案是「${want}」做的，目前開的是「${S.name}」。\n` +
                `時間點可能對不上，還是要套用嗎？`)) return;
 
   S.marks = d.marks.map((m, i) => {
@@ -2002,13 +2014,13 @@ async function loadMarksFile(f){
   if (ready){
     render();
     await recaptureAll('重建每一格畫面…');
-    toast(`已載入 ${S.marks.length} 個標註`);
+    toast(`已載入 ${S.marks.length} 個步驟`);
   } else {
     S.name = want || S.name; render();
     toast(withShot
-      ? `已載入 ${S.marks.length} 個步驟，畫面用的是匯出檔裡的成品圖。`
+      ? `已載入 ${S.marks.length} 個步驟，畫面用的是匯出檔裡的圖。`
         + `要重畫標記或換截圖，再開啟${want ? '「'+want+'」' : '原影片'}`
-      : `已載入 ${S.marks.length} 個標註 —— 請接著開啟${want ? '「'+want+'」' : '對應的影片'}`);
+      : `已載入 ${S.marks.length} 個步驟 —— 請接著開啟${want ? '「'+want+'」' : '對應的影片'}`);
   }
 }
 $('btnMarks').onclick = () => $('marksPick').click();
@@ -2465,7 +2477,7 @@ async function outputGuide(kind, act){
 
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
-  a.download = guideTitle().replace(/[\/:*?"<>|]/g, '') + (deck ? '_簡報.html' : '_圖解SOP.html');
+  a.download = guideTitle().replace(/[\/:*?"<>|]/g, '') + (deck ? '_簡報版.html' : '_書面版.html');
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   $('mOut').classList.remove('on');
