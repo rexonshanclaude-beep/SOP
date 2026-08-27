@@ -697,7 +697,8 @@ button,input,select,textarea{font-family:inherit}
   <span class="st" id="stat">尚未載入影片</span>
   <div class="tools">
     <button class="tb" id="btnOpen">匯入影片</button>
-    <button class="tb" id="btnMarks">載入標註檔</button>
+    <button class="tb" id="btnMarks"
+      title="marks.json，或先前匯出的圖解／簡報 HTML">載入標註檔</button>
     <button class="tb" id="btnDemo">載入範例</button>
     <button class="tb" id="btnClear">清空</button>
     <button class="tb go" id="btnOut" disabled>匯出<span class="n" id="outN">0</span></button>
@@ -1015,7 +1016,7 @@ button,input,select,textarea{font-family:inherit}
 
 <input type="file" id="filePick" accept="video/*" style="display:none">
 <input type="file" id="imgPick" accept="image/*" multiple style="display:none">
-<input type="file" id="marksPick" accept=".json,application/json" style="display:none">
+<input type="file" id="marksPick" accept=".json,.html,application/json,text/html" style="display:none">
 <div class="toast" id="toast"></div>
 <div class="busy" id="busy"><span id="busyTxt">處理中…</span><div class="bar"><i id="busyBar"></i></div></div>
 </div>
@@ -1948,10 +1949,17 @@ async function recaptureAll(label){
    marks.json 裡記著當初那支影片的檔名，兩邊對不上時會先問過再套，
    免得把標註的時間點套到別支影片上 —— 那種錯畫面全歪，而且看不出來。 */
 async function loadMarksFile(f){
+  const text = await f.text();
   let d = null;
-  try { d = JSON.parse(await f.text()); } catch(e){ d = null; }
+  try { d = JSON.parse(text); } catch(e){ d = null; }
+  /* 也吃匯出的圖解／簡報 HTML —— 裡面藏著一份一模一樣的標註資料。
+     多數人手邊留的是那個 HTML，不是 marks.json */
+  if (!d){
+    const g = text.match(/<script type="application\/json" id="sop-marks">([\s\S]*?)<\/script>/);
+    if (g){ try { d = JSON.parse(g[1]); } catch(e){ d = null; } }
+  }
   if (!d || !Array.isArray(d.marks))
-    return toast('這不是標註檔 —— 要選匯出資料夾裡的 marks.json', true);
+    return toast('這不是標註檔 —— 要選 marks.json，或匯出的圖解／簡報 HTML', true);
   if (!d.marks.length) return toast('這個標註檔裡沒有任何標註', true);
 
   const want = d.video && d.video.name;
@@ -2133,6 +2141,16 @@ $('btnDemo').onclick = loadExample;
    給人看的那一份：編號 + 標題 + 大圖 + 說明，一步一塊。
    單一 HTML、圖片內嵌，寄出去對方直接開。
    列印樣式讓每一步不會被切到下一頁 —— 一個步驟被腰斬是最惱人的事。 */
+/* 把標註資料原樣藏進輸出的 HTML —— 那份檔案就同時是「給人看的成品」和「回頭能改的存檔」，
+   不必再另外保管一個 marks.json。資料只有時間點、文字與圖形座標，幾 KB，不影響檔案大小。
+   < 一定要跳脫成 <：JSON 裡只要出現 script 的結束標籤，瀏覽器就會在那裡
+   把整個 script 收掉，後面的程式碼全變成畫面上的亂碼 —— 連寫在註解裡都會中招 */
+function marksBlob(){
+  let j = '';
+  try { j = JSON.stringify(buildDocs().json).replace(/</g, '\\u003c'); }
+  catch(e){ return ''; }
+  return '<script type="application/json" id="sop-marks">' + j + '<\/script>';
+}
 function guideTitle(){
   return ($('sopTitle').value || '').trim()
       || (S.name ? S.name.replace(/[.][^.]+$/, '') : '') || '操作步驟';
@@ -2196,16 +2214,15 @@ footer{margin-top:26px;font-size:11.5px;color:var(--ink3);text-align:center}
   <div class="meta">共 ${S.marks.length} 個步驟　·　${stamp}</div></header>
 ${steps}
 <footer>由 SOP 工具組產生　·　列印時選「儲存為 PDF」即可存成 PDF</footer>
-</div></body></html>`;
+</div>
+${marksBlob()}
+</body></html>`;
 }
 /* 16:9 簡報版。跟文件版吃同一份 S.marks，差別只在版面 ——
    一頁一步、滿版投影，翻頁／跳頁／看所有頁都做在檔案裡，
    對方不用裝任何東西，用瀏覽器打開就能講。 */
 function deckHTML(){
   const title = guideTitle();
-  const d = new Date();
-  const pad = x => String(x).padStart(2, '0');
-  const stamp = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const esc2 = t => String(t == null ? '' : t)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const headOf = (m, i) => {
@@ -2215,7 +2232,7 @@ function deckHTML(){
 
   const slides = S.marks.map((m, i) => {
     const t = headOf(m, i), shot = shotOf(m);
-    return `<section class="pg">
+    return `<section class="pg${i === 0 ? ' on' : ''}">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(t.head)}</h2></div>
   <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}">`
                            : '<div class="noimg">（這一步沒有截圖）</div>'}</div>
@@ -2223,15 +2240,12 @@ function deckHTML(){
 </section>`;
   }).join('\n');
 
-  /* 封面也是一頁，所以縮圖從封面開始編，跳頁的號碼才跟畫面上的一致 */
-  const thumbs = ['<button class="th" data-go="0"><div class="thi cvt">封面</div>'
-    + `<div class="tht"><b>—</b>${esc2(title)}</div></button>`]
-    .concat(S.marks.map((m, i) => {
-      const t = headOf(m, i), shot = shotOf(m);
-      return `<button class="th" data-go="${i + 1}">
+  const thumbs = S.marks.map((m, i) => {
+    const t = headOf(m, i), shot = shotOf(m);
+    return `<button class="th" data-go="${i}">
   <div class="thi">${shot ? `<img src="${shot}" alt="">` : ''}</div>
   <div class="tht"><b>${i + 1}</b><span>${esc2(t.head)}</span></div></button>`;
-    })).join('');
+  }).join('');
 
   return `<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8">
@@ -2255,20 +2269,6 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 .pg{display:none;width:100%;height:100%;
   padding:calc(5*var(--u)) calc(6*var(--u));flex-direction:column;background:var(--bg)}
 .pg.on{display:flex}
-.cov{justify-content:center}
-.cov .bar{width:calc(14*var(--u));height:calc(.9*var(--u));background:var(--brand);
-  border-radius:99px;margin-bottom:calc(4*var(--u))}
-.cov h1{margin:0;font-size:calc(7.4*var(--u));font-weight:800;letter-spacing:-.02em;
-  line-height:1.25;text-wrap:balance;max-width:82%}
-.cov .cm{margin-top:calc(3*var(--u));font-size:calc(2.6*var(--u));color:var(--ink3)}
-.play{margin-top:calc(4.4*var(--u));appearance:none;border:0;cursor:pointer;font:inherit;
-  align-self:flex-start;display:flex;align-items:center;gap:calc(1.2*var(--u));
-  background:var(--brand);color:#fff;font-size:calc(2.7*var(--u));font-weight:800;
-  padding:calc(1.5*var(--u)) calc(3.4*var(--u));border-radius:99px}
-.play:hover{filter:brightness(1.1)}
-.cov .hint{margin-top:calc(3*var(--u));font-size:calc(2.1*var(--u));color:var(--ink3)}
-.cov .hint kbd{background:var(--card);border:1px solid var(--line);border-radius:calc(.6*var(--u));
-  padding:0 calc(.9*var(--u));font:inherit;font-size:calc(2*var(--u))}
 .sh{display:flex;align-items:center;gap:calc(2*var(--u));flex:none;margin-bottom:calc(2.6*var(--u))}
 .sn{flex:none;width:calc(5.6*var(--u));height:calc(5.6*var(--u));border-radius:50%;
   background:var(--brand);color:#fff;font-size:calc(2.8*var(--u));font-weight:800;
@@ -2335,13 +2335,6 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 </style></head>
 <body>
 <div class="stage">
-  <section class="pg cov on">
-    <div class="bar"></div>
-    <h1>${esc2(title)}</h1>
-    <div class="cm">共 ${S.marks.length} 個步驟　·　${stamp}</div>
-    <button class="play" id="play">▶ 開始播放</button>
-    <div class="hint"><kbd>←</kbd> <kbd>→</kbd> 翻頁　·　<kbd>G</kbd> 看所有頁　·　<kbd>F</kbd> 全螢幕　·　<kbd>Esc</kbd> 離開全螢幕</div>
-  </section>
 ${slides}
 </div>
 <div class="nav">
@@ -2388,7 +2381,6 @@ ${slides}
       document.documentElement.requestFullscreen().catch(function(){});
   }
   document.getElementById('fs').onclick=function(e){ if(e) e.stopPropagation(); full(); };
-  document.getElementById('play').onclick=function(e){ e.stopPropagation(); full(); go(1); };
   document.getElementById('grid').addEventListener('click',function(e){
     var b=e.target.closest('.th'); if(!b) return;
     go(Number(b.getAttribute('data-go'))); ov.classList.remove('on');
@@ -2411,6 +2403,7 @@ ${slides}
   paint();
 })();
 <\/script>
+${marksBlob()}
 </body></html>`;
 }
 
