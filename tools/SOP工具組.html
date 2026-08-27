@@ -1937,7 +1937,14 @@ async function recaptureAll(label){
   const back = V.currentTime, was = !V.paused;
   V.pause(); busy(true, label, 0);
   for (let i = 0; i < S.marks.length; i++){
-    if (!S.marks[i].img){ await seek(S.marks[i].t); await shoot(S.marks[i]); }
+    const m = S.marks[i];
+    /* _baked 是從匯出檔載回來的成品圖 —— 有真影片可抓時就換掉它，
+       順便把當初收起來的那組標記放回來，這樣又能重畫了 */
+    const stale = m._baked && m.t != null;
+    if (!m.img || stale){
+      await seek(m.t); await shoot(m);
+      if (stale){ m.edits = m._edits0 || m.edits; m._edits0 = null; m._baked = false; m._th = null; }
+    }
     busy(true, label, (i+1)/S.marks.length);
   }
   await seek(back); if (was) V.play();
@@ -1950,13 +1957,25 @@ async function recaptureAll(label){
    免得把標註的時間點套到別支影片上 —— 那種錯畫面全歪，而且看不出來。 */
 async function loadMarksFile(f){
   const text = await f.text();
-  let d = null;
+  let d = null, baked = [];
   try { d = JSON.parse(text); } catch(e){ d = null; }
   /* 也吃匯出的圖解／簡報 HTML —— 裡面藏著一份一模一樣的標註資料。
-     多數人手邊留的是那個 HTML，不是 marks.json */
+     多數人手邊留的是那個 HTML，不是 marks.json。
+     順便把每一步的成品圖撈回來當畫面：圖本來就在那個檔案裡，
+     不用的話載回來會是一整排空格，等於白載。
+     DOMParser 只建 DOM 不跑 script，比拿 regex 去啃 dataURL 穩得多 */
   if (!d){
-    const g = text.match(/<script type="application\/json" id="sop-marks">([\s\S]*?)<\/script>/);
-    if (g){ try { d = JSON.parse(g[1]); } catch(e){ d = null; } }
+    let doc = null;
+    try { doc = new DOMParser().parseFromString(text, 'text/html'); } catch(e){ doc = null; }
+    const tag = doc && doc.getElementById('sop-marks');
+    if (tag){
+      try { d = JSON.parse(tag.textContent); } catch(e){ d = null; }
+      if (d) doc.querySelectorAll('img[data-step]').forEach(im => {
+        const k = Number(im.getAttribute('data-step'));
+        const src = im.getAttribute('src') || '';
+        if (k >= 0 && src.slice(0, 5) === 'data:') baked[k] = src;
+      });
+    }
   }
   if (!d || !Array.isArray(d.marks))
     return toast('這不是標註檔 —— 要選 marks.json，或匯出的圖解／簡報 HTML', true);
@@ -1967,8 +1986,18 @@ async function loadMarksFile(f){
       !confirm(`這份標註檔是「${want}」的，目前開的是「${S.name}」。\n` +
                `時間點可能對不上，還是要套用嗎？`)) return;
 
-  S.marks = d.marks.map(m => ({ id:uid(), t:(m.t==null?null:Number(m.t)), note:m.note||'',
-                                full:null, img:null, edits:m.edits||newEdits(), _th:null }));
+  S.marks = d.marks.map((m, i) => {
+    const bk = baked[i] || null;
+    /* 成品圖上的箭頭是已經畫進去的，再套一次 edits 會疊成兩層。
+       原始那組先收在 _edits0，等真的畫面回來（載入影片重抓）再放回去 ——
+       直接丟掉的話，使用者補上影片就會發現標記全不見了 */
+    return { id:uid(), t:(m.t==null?null:Number(m.t)), note:m.note||'',
+             full:bk, img:null, _baked:!!bk,
+             _edits0: bk ? (m.edits || newEdits()) : null,
+             edits: bk ? newEdits() : (m.edits || newEdits()), _th:null };
+  });
+  for (const m of S.marks) if (m.full) m.img = await loadImg(m.full);
+  const withShot = S.marks.filter(m => m.img).length;
   active = null; dirty = false;
   if (ready){
     render();
@@ -1976,7 +2005,10 @@ async function loadMarksFile(f){
     toast(`已載入 ${S.marks.length} 個標註`);
   } else {
     S.name = want || S.name; render();
-    toast(`已載入 ${S.marks.length} 個標註 —— 請接著開啟${want ? '「'+want+'」' : '對應的影片'}`);
+    toast(withShot
+      ? `已載入 ${S.marks.length} 個步驟，畫面用的是匯出檔裡的成品圖。`
+        + `要重畫標記或換截圖，再開啟${want ? '「'+want+'」' : '原影片'}`
+      : `已載入 ${S.marks.length} 個標註 —— 請接著開啟${want ? '「'+want+'」' : '對應的影片'}`);
   }
 }
 $('btnMarks').onclick = () => $('marksPick').click();
@@ -2169,7 +2201,7 @@ function guideHTML(){
     const shot  = shotOf(m);
     return `<section class="s">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(head)}</h2></div>
-  ${shot ? `<figure><img src="${shot}" alt="步驟 ${i + 1}"></figure>` : ''}
+  ${shot ? `<figure><img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}"></figure>` : ''}
   ${body.length ? `<div class="sd">${body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
 </section>`;
   }).join('\n');
@@ -2234,7 +2266,7 @@ function deckHTML(){
     const t = headOf(m, i), shot = shotOf(m);
     return `<section class="pg${i === 0 ? ' on' : ''}">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(t.head)}</h2></div>
-  <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}">`
+  <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}">`
                            : '<div class="noimg">（這一步沒有截圖）</div>'}</div>
   ${t.body.length ? `<div class="sd">${t.body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
 </section>`;
