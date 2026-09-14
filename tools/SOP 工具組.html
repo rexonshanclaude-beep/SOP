@@ -1803,7 +1803,7 @@ function openEditor(m, external, fields){
   /* 製圖頁自己的步驟：右側就是那一格的說明 */
   buildFields(fields || (external ? null : [
     { k:'note', label:'這一步在做什麼', type:'textarea', value:m.note,
-      placeholder:'第一行會變成步驟名稱，其餘是說明' }]));
+      placeholder:'一般第一行是步驟名稱；用 1.、-、• 開頭時會完整保留為清單' }]));
   $('edCols').innerHTML = CFG.colors.map(c =>
     `<button data-c="${c}" style="background:${c}" class="${c===ED.color?'on':''}"></button>`).join('');
   $('mEd').classList.add('on');
@@ -2452,6 +2452,15 @@ function guideTitle(){
   return ($('sopTitle').value || '').trim()
       || (S.name ? S.name.replace(/[.][^.]+$/, '') : '') || '操作步驟';
 }
+/* 一般筆記用第一行當步驟名稱；若使用者直接輸入編號／項目清單，
+   第一行本身就是內容，不可把它抽走放到標題，否則圖片下方只會剩第二項。 */
+function stepCopy(m, i){
+  const lines = String(m.note || '').trim().split(/\r?\n+/).map(x => x.trim()).filter(Boolean);
+  const isList = lines.length > 1 && /^(?:\d+[.)、]|[-*•])\s*/.test(lines[0]);
+  return isList
+    ? { head:'操作說明', body:lines }
+    : { head:lines[0] || ('步驟 ' + (i + 1)), body:lines.slice(1) };
+}
 function guideHTML(){
   const title = guideTitle();
   const d = new Date();
@@ -2460,14 +2469,12 @@ function guideHTML(){
   const esc2 = t => String(t == null ? '' : t)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const steps = S.marks.map((m, i) => {
-    const lines = (m.note || '').trim().split(/\n+/).filter(Boolean);
-    const head  = lines[0] || ('步驟 ' + (i + 1));
-    const body  = lines.slice(1);
+    const copy = stepCopy(m, i);
     const shot  = shotOf(m);
     return `<section class="s">
-  <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(head)}</h2></div>
+  <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(copy.head)}</h2></div>
   ${shot ? `<figure><img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}"></figure>` : ''}
-  ${body.length ? `<div class="sd">${body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
+  ${copy.body.length ? `<div class="sd">${copy.body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
 </section>`;
   }).join('\n');
 
@@ -2522,13 +2529,9 @@ function deckHTML(){
   const title = guideTitle();
   const esc2 = t => String(t == null ? '' : t)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const headOf = (m, i) => {
-    const lines = (m.note || '').trim().split(/\n+/).filter(Boolean);
-    return { head: lines[0] || ('步驟 ' + (i + 1)), body: lines.slice(1) };
-  };
 
   const slides = S.marks.map((m, i) => {
-    const t = headOf(m, i), shot = shotOf(m);
+    const t = stepCopy(m, i), shot = shotOf(m);
     return `<section class="pg${i === 0 ? ' on' : ''}">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(t.head)}</h2></div>
   <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}">`
@@ -2538,7 +2541,7 @@ function deckHTML(){
   }).join('\n');
 
   const thumbs = S.marks.map((m, i) => {
-    const t = headOf(m, i), shot = shotOf(m);
+    const t = stepCopy(m, i), shot = shotOf(m);
     return `<button class="th" data-go="${i}">
   <div class="thi">${shot ? `<img src="${shot}" alt="">` : ''}</div>
   <div class="tht"><b>${i + 1}</b><span>${esc2(t.head)}</span></div></button>`;
@@ -2578,7 +2581,7 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 .sfig img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 .noimg{color:var(--ink3);font-size:calc(2.4*var(--u))}
 .sd{flex:none;margin-top:calc(2.2*var(--u));font-size:calc(2.5*var(--u));color:var(--ink2);
-  line-height:1.6;max-height:calc(12*var(--u));overflow:hidden}
+  line-height:1.6;overflow:visible}
 .sd p{margin:0 0 calc(.6*var(--u))}
 /* 導覽列平常淡掉，滑過去才亮 —— 投影時不要跟內容搶注意力 */
 .nav{position:fixed;right:calc(2.6*var(--u));bottom:calc(2.4*var(--u));z-index:5;
@@ -2872,7 +2875,8 @@ window.addEventListener('beforeunload', e => {
 
 render();
 return { get marks(){ return S.marks; }, get video(){ return S; },
-         holdInfo, shotOf, render, loadImg, guideHTML, guideTitle, addImages, editImage, pointVisualSize };
+         holdInfo, shotOf, render, loadImg, guideHTML, deckHTML, guideTitle, stepCopy,
+         addImages, editImage, pointVisualSize };
 })();
 unown();</script>
 
