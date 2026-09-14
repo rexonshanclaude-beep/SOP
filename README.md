@@ -12,6 +12,8 @@
 
 ### 👉 **https://rexonshanclaude-beep.github.io/SOP/**
 
+使用教學 PDF：**https://drive.google.com/file/d/1SWIcDe9RjF3L6XC5cuMUHo0Lsu4HfwGZ/view?usp=sharing**
+
 想離線用就按右上角 **Code → Download ZIP**，解壓縮後打開 `tools/SOP 工具組.html`，功能完全一樣。
 
 ---
@@ -30,7 +32,8 @@
 
 每張圖都能加標記：箭頭、手指、游標、編號、框選、**遮蔽**（蓋掉客戶名稱、報價、個資）、放大擷取。
 標記是疊上去的，**原始畫面不會被改掉**。編輯器預設是最常用的矩形；切到「選取」後，既有貼圖、
-矩形、箭頭、標號與遮蔽都能再次選取、移動、縮放或調整端點，不必刪掉重畫。
+矩形、箭頭、標號與遮蔽都能再次選取、移動、縮放或調整端點，不必刪掉重畫。貼圖的尺寸控制點可往外
+放大、也可往中心縮小；舊檔中尚未調整過大小的貼圖仍維持原本預設尺寸。
 
 Windows 常用快捷鍵可直接用：<kbd>Ctrl</kbd>+<kbd>Z</kbd> 復原、<kbd>Ctrl</kbd>+<kbd>Y</kbd>
 或 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> 重做、<kbd>Ctrl</kbd>+<kbd>C/X/V</kbd>
