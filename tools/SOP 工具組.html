@@ -367,6 +367,7 @@ button,input,select,textarea{font-family:inherit}
 .app-mark .tool:hover{border-color:#cdd8e4;background:#f7f9fc}
 .app-mark .tool.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .app-mark .tool.on:hover{background:var(--brand);filter:brightness(1.06)}
+.app-mark .tool:disabled{opacity:.38;cursor:default;filter:none}
 .app-mark .tdiv{width:1px;align-self:stretch;background:var(--line);margin:2px 3px}
 .app-mark .cols{display:flex;gap:5px;align-items:center;margin-left:4px}
 .app-mark .cols button{width:24px;height:24px;border-radius:6px;border:2px solid #fff;cursor:pointer;
@@ -384,8 +385,9 @@ button,input,select,textarea{font-family:inherit}
   border-color:transparent;color:var(--ink3);font-variant-numeric:tabular-nums}
 .app-mark .edcanvas{background:#12202e;border-radius:9px;padding:10px;display:flex;align-items:center;justify-content:center;
   overflow:auto;min-height:0}
-.app-mark .edcanvas canvas{max-width:100%;display:block;cursor:crosshair;border-radius:4px;
+.app-mark .edcanvas canvas{max-width:100%;display:block;cursor:crosshair;border-radius:4px;touch-action:none;
   box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.app-mark .edcanvas canvas.selecting{cursor:default}
 .app-mark .edhint{font-size:11.5px;color:var(--ink3);line-height:1.6}
 .app-mark .edhint b{color:var(--ink2)}
 .app-mark .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);background:#16202b;color:#fff;
@@ -578,6 +580,19 @@ button,input,select,textarea{font-family:inherit}
 .app-form .addrow{width:100%;padding:12px;border:1.5px dashed #cdd8e4;background:none;border-radius:9px;
   color:var(--ink3);font-size:13.5px;font-weight:700;cursor:pointer}
 .app-form .addrow:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.app-form .insb{position:relative;display:block;width:calc(100% - 20px);margin:0 10px;height:15px;
+  padding:0;border:0;background:none;cursor:pointer;font-family:inherit;transition:height .13s ease}
+.app-form .insb .ln{position:absolute;left:0;right:0;top:50%;height:1px;background:transparent;transition:background .13s}
+.app-form .insb .pl{position:absolute;left:50%;top:50%;translate:-50% -50%;display:flex;align-items:center;
+  justify-content:center;width:15px;height:15px;border-radius:50%;background:#fff;border:1px solid transparent;
+  color:#c3cedb;font-size:12px;font-weight:700;line-height:1;transition:.13s}
+.app-form .insb .tip{position:absolute;left:50%;top:50%;translate:14px -50%;background:var(--ink);color:#fff;
+  border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none}
+.app-form .insb:hover,.app-form .insb:focus-visible{height:30px;outline:none}
+.app-form .insb:hover .ln{background:#c3d6f7}
+.app-form .insb:hover .pl,.app-form .insb:focus-visible .pl{width:23px;height:23px;border-color:var(--brand);
+  color:var(--brand);font-size:14px;box-shadow:0 0 0 3px rgba(47,109,246,.13)}
+.app-form .insb:hover .tip,.app-form .insb:focus-visible .tip{opacity:1}
 .app-form .empty-hint{padding:34px 20px;text-align:center;color:var(--ink3);font-size:13px;line-height:1.8}
 /* 兩版對照 */
 .app-form .cstat{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 16px 0;flex-wrap:wrap}
@@ -975,10 +990,12 @@ button,input,select,textarea{font-family:inherit}
 <div class="mask" id="mEd">
   <div class="dlg wide">
     <div class="dhead"><div><h3 id="edTitle">標記截圖</h3>
-      <div class="sub">在畫面上拖曳就會畫出來。標記可以重畫，原始畫面不會被改掉</div></div>
+      <div class="sub">標記可再次選取、移動與縮放；所有操作都不會改到原始畫面</div></div>
       <button class="x" data-edclose="1">×</button></div>
     <div class="dbody edwrap">
       <div class="edtools">
+        <button class="tool" data-tool="select">↖ 選取</button>
+        <span class="tdiv"></span>
         <button class="tool" data-tool="arrow">↗ 箭頭</button>
         <button class="tool" data-tool="emoji">🙂 貼圖</button>
         <button class="tool" data-tool="badge">① 標號</button>
@@ -993,7 +1010,8 @@ button,input,select,textarea{font-family:inherit}
           <button class="tool" id="edZoomIn" title="放大">＋</button>
           <button class="tool" id="edZoomFit" title="整張塞進畫面">符合畫面</button>
         </span>
-        <button class="tool" id="edUndo">↶ 復原</button>
+        <button class="tool" id="edUndo" title="Ctrl+Z">↶ 復原</button>
+        <button class="tool" id="edRedo" title="Ctrl+Y / Ctrl+Shift+Z">↷ 重做</button>
         <button class="tool" id="edUncrop" style="display:none">取消擷取</button>
         <button class="tool" id="edReset">清除</button>
       </div>
@@ -1708,7 +1726,8 @@ document.addEventListener('keydown', e => {
 });
 
 /* ══════════════ 截圖編輯器 ══════════════ */
-let ED = null;   // {m, tool, color, shapes, crop, drawing, p0, p1}
+let ED = null;   // 共用編輯器的工作狀態；shapes/crop 只在按「完成」後寫回原資料
+let edClipboard = null;
 /* 外部（填表器）借用同一套編輯器：丟一個 {full, edits} 進來，
    存檔時回呼合成好的結果。這樣兩頁的標記工具完全一致，不必再寫一份。 */
 /* 右側欄位由呼叫端決定要哪幾格：
@@ -1759,10 +1778,11 @@ let extSave = null;
 function openEditor(m, external, fields){
   if (!m.img) return toast('這一格還沒有畫面，先按「⟳ 對齊」重抓', true);
   if (!external) extSave = null;
-  ED = { m, tool:'arrow', color:CFG.colors[0],
+  ED = { m, tool:'rect', color:CFG.colors[0],
          shapes:JSON.parse(JSON.stringify(m.edits.shapes)),
          crop:m.edits.crop ? Object.assign({}, m.edits.crop) : null,
-         drawing:false, p0:null, p1:null };
+         drawing:false, p0:null, p1:null, selected:null, action:null,
+         history:[], future:[] };
   $('edTitle').textContent = external ? '標記截圖'
     : `標記截圖 · 第 ${S.marks.indexOf(m)+1} 步` + (fromVideo(m) ? `（${t1(m.t)}）` : (m.name ? `（${m.name}）` : ''));
   /* 製圖頁自己的步驟：右側就是那一格的說明 */
@@ -1772,7 +1792,7 @@ function openEditor(m, external, fields){
   $('edCols').innerHTML = CFG.colors.map(c =>
     `<button data-c="${c}" style="background:${c}" class="${c===ED.color?'on':''}"></button>`).join('');
   $('mEd').classList.add('on');
-  edTool('arrow');
+  edTool('rect');
   ED.zoom = 0;                     // 0＝符合畫面，其餘是實際倍率
   fitCanvas(); edPaint();
 }
@@ -1800,6 +1820,7 @@ function closeEditor(){ $('mEd').classList.remove('on'); ED = null; }
 const POINT = ['emoji','badge'];                 // 這幾種是「點一下就放」，拖曳只是調大小
 const EMOJIS = ['👆','👉','👈','✋','✅','❌','⚠️','❓','⭐','🔍','📌','✏️','🖱️','⏰','💡','🚫'];
 function edTool(t){
+  if (!ED) return;
   ED.tool = t;
   const bar = $('edEmojis');
   bar.classList.toggle('on', t === 'emoji');
@@ -1809,7 +1830,9 @@ function edTool(t){
     bar.dataset.built = '1';
   }
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('edCanvas').classList.toggle('selecting', t === 'select');
   $('edHint').innerHTML = ({
+    select: '<b>點一下</b>選回既有標記；拖曳標記可移動，拖控制點可縮放或調整箭頭端點。',
     arrow : '<b>拖曳</b>畫箭頭 —— 從空白處拉向要看的地方。',
     emoji : '先選一個貼圖，再<b>點一下</b>畫面貼上去。按住往外拖可以調大小。',
     badge : '<b>點一下</b>放一個編號，會自動 1、2、3 排下去 —— 同一步裡的操作順序用這個標。',
@@ -1823,12 +1846,144 @@ function edXY(e){
   return { x: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
            y: Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1) };
 }
+const edCopyValue = v => JSON.parse(JSON.stringify(v));
+const edClamp = v => Math.min(1, Math.max(0, v));
+function edState(){
+  return { shapes:edCopyValue(ED.shapes), crop:ED.crop ? edCopyValue(ED.crop) : null,
+           selected:ED.selected };
+}
+function edLoadState(s){
+  ED.shapes=edCopyValue(s.shapes||[]); ED.crop=s.crop?edCopyValue(s.crop):null;
+  ED.selected=s.selected;
+  if(ED.selected!=='crop' && (!Number.isInteger(ED.selected)||!ED.shapes[ED.selected])) ED.selected=null;
+  if(ED.selected==='crop'&&!ED.crop) ED.selected=null;
+  edPaint();
+}
+function edCheckpoint(){
+  ED.history.push(edState());
+  if(ED.history.length>100) ED.history.shift();
+  ED.future=[];
+}
+function edUndo(){
+  if(!ED||!ED.history.length) return;
+  ED.future.push(edState()); edLoadState(ED.history.pop());
+}
+function edRedo(){
+  if(!ED||!ED.future.length) return;
+  ED.history.push(edState()); edLoadState(ED.future.pop());
+}
+function edSelected(){
+  if(!ED) return null;
+  return ED.selected==='crop' ? ED.crop : Number.isInteger(ED.selected) ? ED.shapes[ED.selected] : null;
+}
+function edShapeBox(s,cv){
+  const W=cv.width,H=cv.height, x1=s.x1*W,y1=s.y1*H,x2=s.x2*W,y2=s.y2*H;
+  const base=Math.min(W,H), d=Math.hypot(x2-x1,y2-y1);
+  if(s.type==='emoji'){
+    const z=Math.max(d*1.6,base*.13), h=z*.62;
+    return {l:x1-h,t:y1-h,r:x1+h,b:y1+h};
+  }
+  if(s.type==='badge'){
+    const z=Math.max(d,base*.055);
+    return {l:x1-z,t:y1-z,r:x1+z,b:y1+z};
+  }
+  if(s.type==='hand'||s.type==='cursor'){
+    const z=Math.max(d,base*.13);
+    return {l:x1,t:y1,r:x1+z,b:y1+z};
+  }
+  return {l:Math.min(x1,x2),t:Math.min(y1,y2),r:Math.max(x1,x2),b:Math.max(y1,y2)};
+}
+function edPointSegment(px,py,x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1, q=dx*dx+dy*dy;
+  const t=q?Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/q)):0;
+  return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+function edHit(p){
+  const cv=$('edCanvas'),px=p.x*cv.width,py=p.y*cv.height;
+  for(let i=ED.shapes.length-1;i>=0;i--){
+    const s=ED.shapes[i], b=edShapeBox(s,cv);
+    if(s.type==='arrow'){
+      if(edPointSegment(px,py,s.x1*cv.width,s.y1*cv.height,s.x2*cv.width,s.y2*cv.height)<=12) return i;
+    }else if(px>=b.l-8&&px<=b.r+8&&py>=b.t-8&&py<=b.b+8) return i;
+  }
+  if(ED.crop && p.x>=ED.crop.x && p.x<=ED.crop.x+ED.crop.w &&
+     p.y>=ED.crop.y && p.y<=ED.crop.y+ED.crop.h) return 'crop';
+  return null;
+}
+function edHandles(sel){
+  if(sel==='crop') return [
+    {k:'p1',x:ED.crop.x,y:ED.crop.y},
+    {k:'p2',x:ED.crop.x+ED.crop.w,y:ED.crop.y+ED.crop.h}
+  ];
+  const s=ED.shapes[sel]; if(!s) return [];
+  if(POINT.includes(s.type)||s.type==='hand'||s.type==='cursor'){
+    let x=s.x2,y=s.y2;
+    if(Math.hypot(x-s.x1,y-s.y1)<.012){
+      const cv=$('edCanvas'), q=Math.min(cv.width,cv.height)*.10;
+      x=edClamp(s.x1+q/cv.width); y=edClamp(s.y1+q/cv.height);
+    }
+    return [{k:'size',x,y}];
+  }
+  return [{k:'p1',x:s.x1,y:s.y1},{k:'p2',x:s.x2,y:s.y2}];
+}
+function edHandleHit(p){
+  const cv=$('edCanvas'),hs=edHandles(ED.selected);
+  for(let i=0;i<hs.length;i++)
+    if(Math.hypot((p.x-hs[i].x)*cv.width,(p.y-hs[i].y)*cv.height)<=12) return hs[i].k;
+  return null;
+}
+function edSyncSelection(){
+  const s=edSelected();
+  if(s&&s.color){ ED.color=s.color; $('edCols').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.c===ED.color)); }
+  if(s&&s.type==='emoji'&&s.ch){ ED.emoji=s.ch; $('edEmojis').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.e===s.ch)); }
+}
+function edPaintSelection(cx,cv){
+  const s=edSelected(); if(!s) return;
+  const b=ED.selected==='crop'
+    ? {l:ED.crop.x*cv.width,t:ED.crop.y*cv.height,r:(ED.crop.x+ED.crop.w)*cv.width,b:(ED.crop.y+ED.crop.h)*cv.height}
+    : edShapeBox(s,cv);
+  cx.save(); cx.strokeStyle='#fff'; cx.lineWidth=4; cx.setLineDash([7,5]);
+  cx.strokeRect(b.l-5,b.t-5,Math.max(10,b.r-b.l+10),Math.max(10,b.b-b.t+10));
+  cx.strokeStyle='#2f6df6'; cx.lineWidth=2;
+  cx.strokeRect(b.l-5,b.t-5,Math.max(10,b.r-b.l+10),Math.max(10,b.b-b.t+10)); cx.setLineDash([]);
+  edHandles(ED.selected).forEach(h=>{
+    cx.beginPath(); cx.arc(h.x*cv.width,h.y*cv.height,7,0,Math.PI*2);
+    cx.fillStyle='#fff'; cx.fill(); cx.strokeStyle='#2f6df6'; cx.lineWidth=3; cx.stroke();
+  });
+  cx.restore();
+}
+function edDeleteSelected(){
+  if(!edSelected()) return false;
+  edCheckpoint();
+  if(ED.selected==='crop') ED.crop=null; else ED.shapes.splice(ED.selected,1);
+  ED.selected=null; edPaint(); return true;
+}
+function edCopySelected(cut){
+  const s=edSelected(); if(!s) return false;
+  edClipboard={kind:ED.selected==='crop'?'crop':'shape',value:edCopyValue(s)};
+  if(cut) edDeleteSelected(); else toast('已複製標記');
+  return true;
+}
+function edOffset(v){
+  const o=edCopyValue(v), xs=o.x!=null?[o.x,o.x+o.w]:[o.x1,o.x2], ys=o.y!=null?[o.y,o.y+o.h]:[o.y1,o.y2];
+  const dx=Math.max.apply(null,xs)>.96?-.025:.025, dy=Math.max.apply(null,ys)>.96?-.025:.025;
+  if(o.x!=null){o.x=edClamp(o.x+dx);o.y=edClamp(o.y+dy);}
+  else{o.x1=edClamp(o.x1+dx);o.x2=edClamp(o.x2+dx);o.y1=edClamp(o.y1+dy);o.y2=edClamp(o.y2+dy);}
+  return o;
+}
+function edPasteSelected(){
+  if(!ED||!edClipboard) return false;
+  edCheckpoint();
+  if(edClipboard.kind==='crop'){ ED.crop=edOffset(edClipboard.value); ED.selected='crop'; }
+  else{ ED.shapes.push(edOffset(edClipboard.value)); ED.selected=ED.shapes.length-1; }
+  edTool('select'); edSyncSelection(); edPaint(); toast('已貼上標記'); return true;
+}
 function edPaint(){
   if (!ED) return;
   const cv = $('edCanvas'), cx = cv.getContext('2d'), m = ED.m;
   cx.clearRect(0,0,cv.width,cv.height);
   cx.drawImage(m.img, 0, 0, cv.width, cv.height);
-  const live = ED.drawing && ED.p0 && ED.p1;
+  const live = ED.drawing && ED.p0 && ED.p1 && ED.tool!=='select';
   const shapes = ED.shapes.concat(
     live && ED.tool !== 'crop'
       ? [{type:ED.tool, x1:ED.p0.x, y1:ED.p0.y, x2:ED.p1.x, y2:ED.p1.y, color:ED.color,
@@ -1846,53 +2001,115 @@ function edPaint(){
     cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.setLineDash([7,5]);
     cx.strokeRect(X,Y,W,H); cx.setLineDash([]);
   }
+  edPaintSelection(cx,cv);
   $('edCount').textContent = `${ED.shapes.length} 個標記${ED.crop ? '　·　已設定放大擷取範圍' : ''}`;
   $('edUncrop').style.display = ED.crop ? '' : 'none';
+  $('edUndo').disabled=!ED.history.length; $('edRedo').disabled=!ED.future.length;
 }
 $('edCanvas').addEventListener('pointerdown', e => {
   if (!ED) return;
   $('edCanvas').setPointerCapture(e.pointerId);
+  if(ED.tool==='select'){
+    const p=edXY(e), h=edHandleHit(p), hit=h?ED.selected:edHit(p);
+    ED.selected=hit; edSyncSelection();
+    ED.action=hit==null?null:{start:p,orig:edCopyValue(edSelected()),handle:h||'move',moved:false};
+    edPaint(); return;
+  }
+  ED.selected=null;
   ED.drawing = true; ED.p0 = edXY(e); ED.p1 = ED.p0; edPaint();
 });
 $('edCanvas').addEventListener('pointermove', e => {
-  if (!ED || !ED.drawing) return;
+  if(!ED) return;
+  if(ED.action){
+    const p=edXY(e),a=ED.action;
+    if(!a.moved){
+      const cv=$('edCanvas');
+      if(Math.hypot((p.x-a.start.x)*cv.width,(p.y-a.start.y)*cv.height)<3) return;
+      edCheckpoint(); a.moved=true;
+    }
+    const s=edSelected(); if(!s) return;
+    Object.keys(s).forEach(k=>delete s[k]); Object.assign(s,edCopyValue(a.orig));
+    if(a.handle==='move'){
+      const x1=s.x!=null?s.x:s.x1, y1=s.y!=null?s.y:s.y1;
+      const x2=s.x!=null?s.x+s.w:s.x2, y2=s.y!=null?s.y+s.h:s.y2;
+      const dx=Math.max(-Math.min(x1,x2),Math.min(1-Math.max(x1,x2),p.x-a.start.x));
+      const dy=Math.max(-Math.min(y1,y2),Math.min(1-Math.max(y1,y2),p.y-a.start.y));
+      if(s.x!=null){s.x+=dx;s.y+=dy;}else{s.x1+=dx;s.x2+=dx;s.y1+=dy;s.y2+=dy;}
+    }else if(ED.selected==='crop'){
+      let x1=s.x,y1=s.y,x2=s.x+s.w,y2=s.y+s.h;
+      if(a.handle==='p1'){x1=p.x;y1=p.y;}else{x2=p.x;y2=p.y;}
+      s.x=Math.min(x1,x2);s.y=Math.min(y1,y2);s.w=Math.max(.01,Math.abs(x2-x1));s.h=Math.max(.01,Math.abs(y2-y1));
+    }else if(a.handle==='p1'){s.x1=p.x;s.y1=p.y;}
+    else{s.x2=p.x;s.y2=p.y;}
+    edPaint(); return;
+  }
+  if (!ED.drawing) return;
   ED.p1 = edXY(e); edPaint();
 });
 $('edCanvas').addEventListener('pointerup', () => {
+  if(ED&&ED.action){ED.action=null;return;}
   if (!ED || !ED.drawing) return;
   ED.drawing = false;
   const a = ED.p0, b = ED.p1;
   const far = Math.abs(b.x-a.x) > 0.012 || Math.abs(b.y-a.y) > 0.012;   // 手一抖不要留下垃圾
   if (POINT.includes(ED.tool)){                    // 點一下就放，不需要拖出距離
+    edCheckpoint();
     const s = { type:ED.tool, x1:a.x, y1:a.y, x2:b.x, y2:b.y, color:ED.color };
     if (ED.tool === 'badge') s.n = ED.shapes.filter(x => x.type === 'badge').length + 1;
     if (ED.tool === 'emoji') s.ch = ED.emoji || EMOJIS[0];
-    ED.shapes.push(s);
+    ED.shapes.push(s); ED.selected=ED.shapes.length-1;
   } else if (far){
-    if (ED.tool === 'crop')
+    edCheckpoint();
+    if (ED.tool === 'crop'){
       ED.crop = { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), w:Math.abs(b.x-a.x), h:Math.abs(b.y-a.y) };
-    else
+      ED.selected='crop';
+    }else{
       ED.shapes.push({ type:ED.tool, x1:a.x, y1:a.y, x2:b.x, y2:b.y, color:ED.color });
+      ED.selected=ED.shapes.length-1;
+    }
   }
   ED.p0 = ED.p1 = null; edPaint();
+});
+$('edCanvas').addEventListener('pointercancel', () => {
+  if(!ED) return;
+  if(ED.action&&ED.action.moved) edUndo();
+  ED.action=null; ED.drawing=false; ED.p0=ED.p1=null; edPaint();
 });
 document.querySelectorAll('.tool[data-tool]').forEach(b => b.onclick = () => edTool(b.dataset.tool));
 $('edCols').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !ED) return;
   ED.color = b.dataset.c;
+  const s=edSelected();
+  if(s&&s.color!==ED.color){edCheckpoint();s.color=ED.color;edPaint();}
   $('edCols').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
 });
 $('edEmojis').onclick = e => {
   const b = e.target.closest('[data-e]'); if (!b || !ED) return;
   ED.emoji = b.dataset.e;
+  const s=edSelected();
+  if(s&&s.type==='emoji'&&s.ch!==ED.emoji){edCheckpoint();s.ch=ED.emoji;edPaint();}
   $('edEmojis').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
 };
 $('edZoomIn').onclick  = () => edZoomBy(1.25);
 $('edZoomOut').onclick = () => edZoomBy(0.8);
 $('edZoomFit').onclick = () => { if (!ED) return; ED.zoom = 0; fitCanvas(); edPaint(); };
-$('edUndo').onclick    = () => { if (!ED) return; ED.shapes.pop(); edPaint(); };
-$('edUncrop').onclick  = () => { if (!ED) return; ED.crop = null; edPaint(); };
-$('edReset').onclick   = () => { if (!ED) return; ED.shapes = []; ED.crop = null; edPaint(); };
+$('edUndo').onclick    = edUndo;
+$('edRedo').onclick    = edRedo;
+$('edUncrop').onclick  = () => { if (!ED||!ED.crop) return; edCheckpoint(); ED.crop = null; if(ED.selected==='crop')ED.selected=null; edPaint(); };
+$('edReset').onclick   = () => { if (!ED||(!ED.shapes.length&&!ED.crop)) return; edCheckpoint(); ED.shapes = []; ED.crop = null; ED.selected=null; edPaint(); };
+/* 編輯器浮在兩個分頁外層，鍵盤也必須繞過 ACTIVE 分頁包裝；每個寫入函式仍在伺服端／資料層驗證。 */
+_add('keydown', e => {
+  if(!ED||!$('mEd').classList.contains('on')) return;
+  const t=e.target;
+  if(t instanceof Element&&t.closest('input,textarea,select,[contenteditable=""],[contenteditable="true"]')) return;
+  const mod=e.ctrlKey||e.metaKey, k=String(e.key||'').toLowerCase();
+  if(mod&&k==='z'){e.preventDefault();e.shiftKey?edRedo():edUndo();return;}
+  if(mod&&k==='y'){e.preventDefault();edRedo();return;}
+  if(mod&&k==='c'&&edCopySelected(false)){e.preventDefault();return;}
+  if(mod&&k==='x'&&edCopySelected(true)){e.preventDefault();return;}
+  if(mod&&k==='v'&&edPasteSelected()){e.preventDefault();return;}
+  if((e.key==='Delete'||e.key==='Backspace')&&edDeleteSelected())e.preventDefault();
+});
 $('edOk').onclick = () => {
   if (!ED) return;
   ED.m.edits = { crop:ED.crop, shapes:ED.shapes };
@@ -2629,7 +2846,7 @@ const FORM = (() => {
    CONFIG ── 要調整選項或換算基準，直接改這一段就好
    ══════════════════════════════════════════════════════════════ */
 const CFG = {
-  rate: 14,                       // 工時換算金額：元／分鐘
+  rate: 5,                        // 工時換算金額：元／分鐘
 
   /* 步驟分類分兩層，兩層各自獨立、互不覆蓋。
      第一層｜誰出力：判準是「沒有人坐在電腦前，這步會不會自己跑完」。
@@ -2980,7 +3197,9 @@ function renderList(list){
     return;
   }
   const vals=arr.map(mh).filter(v=>v!=null), peak=vals.length?Math.max(...vals):0;
-  el.innerHTML=arr.map((st,i)=>stepHTML(st,i,list,arr,peak)).join('');
+  const ins=i=>`<button class="insb" data-insert="${i}" data-list="${list}" aria-label="在這裡插入步驟">`
+    +`<span class="ln"></span><span class="pl">＋</span><span class="tip">插入步驟</span></button>`;
+  el.innerHTML=ins(0)+arr.map((st,i)=>stepHTML(st,i,list,arr,peak)+ins(i+1)).join('');
   growAll(el);
 }
 
@@ -3241,7 +3460,7 @@ function fileName(){
 function buildHTML(){
   const data=JSON.parse(JSON.stringify(S));
   data.exportedAt=new Date().toISOString();
-  data.config={daysPerMonth:D,weeksPerMonth:W};
+  data.config={daysPerMonth:D,weeksPerMonth:W,ratePerMinute:CFG.rate};
   const rn=sum(S.now), ra=sum(S.aft);
   data.summary={nowTotal:rn.total,nowComplete:rn.complete,aftTotal:ra.total,aftComplete:ra.complete,
                 nowSteps:S.now.length,aftSteps:S.aft.length,
@@ -3346,6 +3565,13 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
 document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
   const k=b.dataset.add; const st=newStep(k); S[k].push(st); active=st.id; mark(); render();
   const el=document.querySelector(`[data-id="${st.id}"] .i.t`); el&&el.focus();
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-insert]'); if(!b) return;
+  const k=b.dataset.list, at=Math.max(0,Math.min(S[k].length,Number(b.dataset.insert)||0));
+  const st=newStep(k); S[k].splice(at,0,st); active=st.id; mark(); render();
+  const el=document.querySelector(`[data-id="${st.id}"] .i.t`);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();}
 });
 /* 顯示單位切換（側欄與對照頁共用） */
 document.addEventListener('click',e=>{
