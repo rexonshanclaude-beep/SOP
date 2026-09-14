@@ -12,7 +12,7 @@
 
 ### 👉 **https://rexonshanclaude-beep.github.io/SOP/**
 
-使用教學 PDF：**https://drive.google.com/file/d/1SWIcDe9RjF3L6XC5cuMUHo0Lsu4HfwGZ/view?usp=sharing**
+操作示範：**https://rexonshanclaude-beep.github.io/SOP/docs/Claude%20%E5%B8%B3%E8%99%9F%E7%99%BB%E5%85%A5%E8%88%87%E5%9C%98%E9%9A%8A%E5%88%87%E6%8F%9B_%E7%B0%A1%E5%A0%B1%E7%89%88.html**
 
 想離線用就按右上角 **Code → Download ZIP**，解壓縮後打開 `tools/SOP 工具組.html`，功能完全一樣。
 

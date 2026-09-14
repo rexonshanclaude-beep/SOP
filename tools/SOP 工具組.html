@@ -407,11 +407,13 @@ button,input,select,textarea{font-family:inherit}
 .app-form button,.app-form input,.app-form select,.app-form textarea{font-family:inherit}
 .app-form .wrap{max-width:1280px;margin:0 auto;padding:0 20px 90px}
 /* 標頭 */
-.app-form .top{background:linear-gradient(160deg,#1c2a3c 0%,#2a4166 100%);color:#fff;padding:20px 0 0;position:sticky;top:0;z-index:20}
-.app-form .top .wrap{padding-bottom:0}
-.app-form .tline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.app-form .top{background:linear-gradient(160deg,#1c2a3c 0%,#2a4166 100%);color:#fff;padding:0;position:sticky;top:0;z-index:20;flex:none}
+.app-form .top .wrap{max-width:none;width:100%;padding:0 18px}
+.app-form .tline{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;margin:0;height:52px;
+  overflow-x:auto;overflow-y:hidden}
+.app-form #saveState{flex:0 0 auto;white-space:nowrap}
 .app-form .top h1{font-size:18px;color:#fff;white-space:nowrap}
-.app-form .top .tools{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+.app-form .top .tools{margin-left:auto;display:flex;gap:7px;flex-wrap:nowrap;flex:0 0 auto}
 .app-form .tb{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.2);color:#dce6f4;
   font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;
   text-decoration:none;line-height:normal}
@@ -419,9 +421,9 @@ button,input,select,textarea{font-family:inherit}
 .app-form .tb.go{background:#fff;color:#1c2a3c;border-color:#fff}
 .app-form .tb.go:hover{background:#e8eef7}
 .app-form .tb:disabled{opacity:.4;cursor:not-allowed}
-.app-form .tabs{display:flex;gap:4px}
+.app-form .tabs{display:flex;gap:4px;align-self:stretch;align-items:flex-end;flex:0 0 auto}
 .app-form .tab{background:none;border:0;color:#9fb3cd;font-size:14px;font-weight:600;padding:10px 20px;
-  cursor:pointer;border-radius:8px 8px 0 0}
+  cursor:pointer;border-radius:8px 8px 0 0;height:40px}
 .app-form .tab:hover{color:#fff;background:rgba(255,255,255,.07)}
 .app-form .tab.on{background:var(--bg);color:var(--ink)}
 .app-form .tab b{display:inline-block;min-width:18px;padding:0 5px;border-radius:99px;background:rgba(255,255,255,.18);
@@ -717,7 +719,7 @@ button,input,select,textarea{font-family:inherit}
     <button class="tb" id="btnMarks"
       title="選你之前匯出的簡報版或書面版 HTML，接著改">開啟既有檔案</button>
     <button class="tb" id="btnDemo">載入範例</button>
-    <a class="tb" href="https://drive.google.com/file/d/1SWIcDe9RjF3L6XC5cuMUHo0Lsu4HfwGZ/view?usp=sharing" target="_blank" rel="noopener">使用教學 PDF ↗</a>
+    <a class="tb" href="../docs/Claude%20%E5%B8%B3%E8%99%9F%E7%99%BB%E5%85%A5%E8%88%87%E5%9C%98%E9%9A%8A%E5%88%87%E6%8F%9B_%E7%B0%A1%E5%A0%B1%E7%89%88.html" target="_blank" rel="noopener">操作示範 ↗</a>
     <button class="tb" id="btnClear">清空</button>
     <button class="tb go" id="btnOut" disabled>匯出<span class="n" id="outN">0</span></button>
   </div>
@@ -835,18 +837,18 @@ button,input,select,textarea{font-family:inherit}
     <div class="tline">
       
       <span id="saveState" style="font-size:12px;color:#8fa6c4"></span>
+      <div class="tabs">
+        <button class="tab on" data-p="pNow">現況流程<b id="fCNow">0</b></button>
+        <button class="tab" data-p="pAft">AI 導入後<b id="cAft">0</b></button>
+        <button class="tab" data-p="pCmp">兩版對照</button>
+      </div>
       <div class="tools">
         <button class="tb" id="btnImport">開啟既有檔案</button>
         <button class="tb" id="btnSample">載入範例</button>
-        <a class="tb" href="https://drive.google.com/file/d/1SWIcDe9RjF3L6XC5cuMUHo0Lsu4HfwGZ/view?usp=sharing" target="_blank" rel="noopener">使用教學 PDF ↗</a>
+        <a class="tb" href="../docs/Claude%20%E5%B8%B3%E8%99%9F%E7%99%BB%E5%85%A5%E8%88%87%E5%9C%98%E9%9A%8A%E5%88%87%E6%8F%9B_%E7%B0%A1%E5%A0%B1%E7%89%88.html" target="_blank" rel="noopener">操作示範 ↗</a>
         <button class="tb" id="fBtnClear">全部清空</button>
         <button class="tb go" id="btnExportTop">匯出交件檔</button>
       </div>
-    </div>
-    <div class="tabs">
-      <button class="tab on" data-p="pNow">現況流程<b id="fCNow">0</b></button>
-      <button class="tab" data-p="pAft">AI 導入後<b id="cAft">0</b></button>
-      <button class="tab" data-p="pCmp">兩版對照</button>
     </div>
   </div>
 </div>
