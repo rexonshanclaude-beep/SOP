@@ -35,7 +35,8 @@
 Windows 常用快捷鍵可直接用：<kbd>Ctrl</kbd>+<kbd>Z</kbd> 復原、<kbd>Ctrl</kbd>+<kbd>Y</kbd>
 或 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> 重做、<kbd>Ctrl</kbd>+<kbd>C/X/V</kbd>
 複製／剪下／貼上所選標記，以及 <kbd>Delete</kbd> 刪除。游標在文字欄位時仍是正常文字操作；
-未複製標記時，原本用 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼 Windows 截圖的流程不變。
+未複製標記時，原本用 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼 Windows 截圖的流程不變。畫箭頭、框選或遮蔽時按
+<kbd>Esc</kbd> 會取消當下動作並回到「選取」，不會關閉編輯器；要離開請按右上角 × 或「取消」。
 
 **產出**：兩種版本，各自都能先**預覽**再決定要不要下載。
 

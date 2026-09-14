@@ -994,7 +994,7 @@ button,input,select,textarea{font-family:inherit}
       <button class="x" data-edclose="1">×</button></div>
     <div class="dbody edwrap">
       <div class="edtools">
-        <button class="tool" data-tool="select">↖ 選取</button>
+      <button class="tool" data-tool="select" title="Esc 回到選取">↖ 選取</button>
         <span class="tdiv"></span>
         <button class="tool" data-tool="arrow">↗ 箭頭</button>
         <button class="tool" data-tool="emoji">🙂 貼圖</button>
@@ -1703,7 +1703,8 @@ document.addEventListener('pointercancel', endDrag);
 const modalOpen = () => document.querySelector('.mask.on');
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
-    if ($('mEd').classList.contains('on')) return closeEditor();
+    /* Esc 在標註編輯器裡只取消當下動作並回到選取；離開編輯器必須明確按 × 或取消。 */
+    if ($('mEd').classList.contains('on')) { e.preventDefault(); return edEscape(); }
     if ($('mOut').classList.contains('on')) return $('mOut').classList.remove('on');
   }
   const tag = (e.target.tagName||'').toLowerCase();
@@ -1832,7 +1833,7 @@ function edTool(t){
   document.querySelectorAll('.tool[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('edCanvas').classList.toggle('selecting', t === 'select');
   $('edHint').innerHTML = ({
-    select: '<b>點一下</b>選回既有標記；拖曳標記可移動，拖控制點可縮放或調整箭頭端點。',
+    select: '<b>點一下</b>選回既有標記；拖曳標記可移動，拖控制點可縮放或調整箭頭端點。按 Esc 也能回到選取。',
     arrow : '<b>拖曳</b>畫箭頭 —— 從空白處拉向要看的地方。',
     emoji : '先選一個貼圖，再<b>點一下</b>畫面貼上去。按住往外拖可以調大小。',
     badge : '<b>點一下</b>放一個編號，會自動 1、2、3 排下去 —— 同一步裡的操作順序用這個標。',
@@ -1840,6 +1841,19 @@ function edTool(t){
     mask  : '拖曳框出要<b>蓋掉</b>的地方。客戶名稱、報價、個資在送出前用這個遮起來。',
     crop  : '拖曳框出要<b>放大擷取</b>的範圍，匯出時只留這一塊並放大。'
   })[t];
+}
+function edEscape(){
+  if(!ED) return false;
+  /* 拖到一半的移動／縮放要還原，不留下半套狀態；也移除該次尚未完成的 history checkpoint。 */
+  if(ED.action&&ED.action.moved){
+    const s=edSelected();
+    if(s){Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,edCopyValue(ED.action.orig));}
+    if(ED.history.length) ED.history.pop();
+  }
+  ED.action=null; ED.drawing=false; ED.p0=ED.p1=null;
+  if(ED.tool==='select') ED.selected=null;
+  edTool('select'); edPaint();
+  return true;
 }
 function edXY(e){
   const cv = $('edCanvas'), r = cv.getBoundingClientRect();
