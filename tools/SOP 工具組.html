@@ -2461,6 +2461,74 @@ function stepCopy(m, i){
     ? { head:'操作說明', body:lines }
     : { head:lines[0] || ('步驟 ' + (i + 1)), body:lines.slice(1) };
 }
+/* 匯出的書面／簡報 HTML 共用圖片檢視器。初始 100% 是「符合目前視窗」，
+   再用 +/- 放大縮小；實際改的是檢視尺寸，不動原圖與 sop-marks。 */
+function zoomViewerMarkup(){
+  return `<div class="zv" id="zv" role="dialog" aria-modal="true" aria-label="圖片放大檢視" aria-hidden="true">
+  <div class="zbar">
+    <button id="zminus" type="button" aria-label="縮小圖片" title="縮小（－）">－</button>
+    <button id="zreset" type="button" aria-label="回到符合視窗" title="回到符合視窗">100%</button>
+    <button id="zplus" type="button" aria-label="放大圖片" title="放大（＋）">＋</button>
+    <button id="zclose" type="button" aria-label="關閉圖片" title="關閉（Esc）">關閉</button>
+  </div>
+  <div class="zpane" id="zpane"><div class="zcanvas" id="zcanvas"><img id="zimg" alt="" draggable="false"></div></div>
+</div>`;
+}
+function zoomViewerScript(){
+  return `<script>
+(function(){
+  var zv=document.getElementById('zv'), pane=document.getElementById('zpane');
+  var canvas=document.getElementById('zcanvas'), zi=document.getElementById('zimg');
+  var minus=document.getElementById('zminus'), plus=document.getElementById('zplus');
+  var reset=document.getElementById('zreset'), close=document.getElementById('zclose');
+  var zoom=1, baseW=1, baseH=1, lastFocus=null;
+  function apply(next){
+    zoom=Math.max(.25,Math.min(4,next));
+    var w=Math.max(1,Math.round(baseW*zoom)), h=Math.max(1,Math.round(baseH*zoom));
+    zi.style.width=w+'px'; zi.style.height=h+'px';
+    canvas.style.width=Math.max(pane.clientWidth,w+48)+'px';
+    canvas.style.height=Math.max(pane.clientHeight,h+96)+'px';
+    reset.textContent=Math.round(zoom*100)+'%';
+    minus.disabled=zoom<=.25; plus.disabled=zoom>=4;
+  }
+  function fit(){
+    if(!zi.naturalWidth||!zi.naturalHeight) return;
+    var ratio=Math.min((window.innerWidth-48)/zi.naturalWidth,(window.innerHeight-112)/zi.naturalHeight);
+    baseW=Math.max(1,Math.round(zi.naturalWidth*ratio));
+    baseH=Math.max(1,Math.round(zi.naturalHeight*ratio));
+    apply(1); pane.scrollLeft=0; pane.scrollTop=0;
+  }
+  function openZoom(img){
+    lastFocus=img; zoom=1;
+    zi.onload=fit; zi.alt=img.alt||'放大圖片'; zi.src=img.currentSrc||img.src;
+    zv.classList.add('on'); zv.setAttribute('aria-hidden','false');
+    document.documentElement.classList.add('zoom-open');
+    if(zi.complete) fit(); plus.focus();
+  }
+  function closeZoom(){
+    zv.classList.remove('on'); zv.setAttribute('aria-hidden','true');
+    document.documentElement.classList.remove('zoom-open');
+    if(lastFocus&&lastFocus.focus) lastFocus.focus();
+  }
+  [].forEach.call(document.querySelectorAll('img[data-zoom]'),function(img){
+    img.tabIndex=0; img.setAttribute('role','button');
+    img.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openZoom(img);});
+    img.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openZoom(img);}});
+  });
+  minus.onclick=function(){apply(zoom-.25);}; plus.onclick=function(){apply(zoom+.25);};
+  reset.onclick=function(){apply(1);}; close.onclick=closeZoom;
+  pane.onclick=function(e){if(e.target===pane||e.target===canvas) closeZoom();};
+  window.addEventListener('resize',function(){if(zv.classList.contains('on')) fit();});
+  document.addEventListener('keydown',function(e){
+    if(!zv.classList.contains('on')) return;
+    var k=e.key;
+    if(k==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeZoom();}
+    else if(k==='+'||k==='='){e.preventDefault();e.stopImmediatePropagation();apply(zoom+.25);}
+    else if(k==='-'||k==='_'){e.preventDefault();e.stopImmediatePropagation();apply(zoom-.25);}
+  });
+})();
+<\/script>`;
+}
 function guideHTML(){
   const title = guideTitle();
   const d = new Date();
@@ -2473,7 +2541,7 @@ function guideHTML(){
     const shot  = shotOf(m);
     return `<section class="s">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(copy.head)}</h2></div>
-  ${shot ? `<figure><img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}"></figure>` : ''}
+  ${shot ? `<figure><img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}" data-zoom title="點一下放大圖片"></figure>` : ''}
   ${copy.body.length ? `<div class="sd">${copy.body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
 </section>`;
   }).join('\n');
@@ -2500,9 +2568,22 @@ h1{margin:0 0 7px;font-size:27px;font-weight:800;letter-spacing:-.02em;text-wrap
 .sh h2{margin:0;font-size:18px;font-weight:800;line-height:1.45;text-wrap:balance}
 figure{margin:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#eef1f5}
 figure img{display:block;width:100%;height:auto}
+figure img[data-zoom]{cursor:zoom-in}
 .sd{margin-top:13px;font-size:14px;color:var(--ink2)}
 .sd p{margin:0 0 7px}
 footer{margin-top:26px;font-size:11.5px;color:var(--ink3);text-align:center}
+.zoom-open{overflow:hidden}
+.zv{position:fixed;inset:0;z-index:99;display:none;background:rgba(8,13,19,.97);color:#eaf0f7}
+.zv.on{display:block}
+.zbar{position:absolute;z-index:2;right:18px;top:16px;display:flex;gap:7px;padding:7px;
+  border:1px solid #2c3b4d;border-radius:999px;background:rgba(20,29,41,.94);box-shadow:0 8px 28px rgba(0,0,0,.3)}
+.zbar button{min-width:42px;height:38px;border:0;border-radius:999px;background:transparent;color:#eaf0f7;
+  font:700 15px "Segoe UI","Microsoft JhengHei",sans-serif;cursor:pointer;padding:0 13px}
+.zbar button:hover:not(:disabled),.zbar button:focus-visible{background:#2f6df6;outline:none}
+.zbar button:disabled{opacity:.35;cursor:default}
+.zpane{position:absolute;inset:0;overflow:auto}
+.zcanvas{display:flex;align-items:center;justify-content:center;padding:72px 24px 24px}
+.zcanvas img{display:block;max-width:none;max-height:none;box-shadow:0 12px 42px rgba(0,0,0,.45)}
 @media print{
   @page{size:A4;margin:13mm}
   body{background:#fff}
@@ -2510,7 +2591,7 @@ footer{margin-top:26px;font-size:11.5px;color:var(--ink3);text-align:center}
   .s{border-color:#ccd4dd;box-shadow:none;margin-bottom:11px}
   figure img{max-height:118mm;width:auto;max-width:100%;margin:0 auto}
   header{border-bottom-width:1.5px}
-  footer{display:none}
+  footer,.zv{display:none!important}
 }
 </style></head>
 <body><div class="pg">
@@ -2519,6 +2600,8 @@ footer{margin-top:26px;font-size:11.5px;color:var(--ink3);text-align:center}
 ${steps}
 <footer>由 SOP 工具組產生　·　列印時選「儲存為 PDF」即可存成 PDF</footer>
 </div>
+${zoomViewerMarkup()}
+${zoomViewerScript()}
 ${marksBlob()}
 </body></html>`;
 }
@@ -2534,7 +2617,7 @@ function deckHTML(){
     const t = stepCopy(m, i), shot = shotOf(m);
     return `<section class="pg${i === 0 ? ' on' : ''}">
   <div class="sh"><span class="sn">${i + 1}</span><h2>${esc2(t.head)}</h2></div>
-  <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}">`
+  <div class="sfig">${shot ? `<img src="${shot}" alt="步驟 ${i + 1}" data-step="${i}" data-zoom title="點一下放大圖片">`
                            : '<div class="noimg">（這一步沒有截圖）</div>'}</div>
   ${t.body.length ? `<div class="sd">${t.body.map(x => `<p>${esc2(x)}</p>`).join('')}</div>` : ''}
 </section>`;
@@ -2578,7 +2661,7 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 .sfig{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
   background:#0a1017;border:1px solid rgba(255,255,255,.05);
   border-radius:calc(1.2*var(--u));overflow:hidden}
-.sfig img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.sfig img{max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in}
 .noimg{color:var(--ink3);font-size:calc(2.4*var(--u))}
 .sd{flex:none;margin-top:calc(2.2*var(--u));font-size:calc(2.5*var(--u));color:var(--ink2);
   line-height:1.6;overflow:visible}
@@ -2620,6 +2703,20 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   font-size:calc(2.1*var(--u));color:var(--ink2);line-height:1.5}
 .tht b{color:var(--brand);flex:none}
 .tht span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zoom-open{overflow:hidden}
+.zv{position:fixed;inset:0;z-index:20;display:none;background:rgba(8,13,19,.985);color:var(--ink)}
+.zv.on{display:block}
+.zbar{position:absolute;z-index:2;right:calc(2.2*var(--u));top:calc(2*var(--u));display:flex;
+  gap:calc(.7*var(--u));padding:calc(.7*var(--u));border:1px solid var(--line);border-radius:99px;
+  background:rgba(20,29,41,.94);box-shadow:0 calc(1*var(--u)) calc(3*var(--u)) rgba(0,0,0,.35)}
+.zbar button{min-width:calc(4.6*var(--u));height:calc(4.2*var(--u));appearance:none;border:0;border-radius:99px;
+  background:none;color:var(--ink);font:700 calc(2*var(--u)) "Segoe UI","Microsoft JhengHei",sans-serif;
+  cursor:pointer;padding:0 calc(1.3*var(--u))}
+.zbar button:hover:not(:disabled),.zbar button:focus-visible{background:var(--brand);outline:none}
+.zbar button:disabled{opacity:.35;cursor:default}
+.zpane{position:absolute;inset:0;overflow:auto}
+.zcanvas{display:flex;align-items:center;justify-content:center;padding:calc(8*var(--u)) calc(2.4*var(--u)) calc(2.4*var(--u))}
+.zcanvas img{display:block;max-width:none;max-height:none;box-shadow:0 calc(1.2*var(--u)) calc(4.2*var(--u)) rgba(0,0,0,.5)}
 /* 列印時每一頁就是一張投影片，橫式 A4 剛好是 16:9 的近親 */
 @media print{
   @page{size:A4 landscape;margin:0}
@@ -2630,7 +2727,7 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
   .sfig{background:#f2f5f8;border-color:#dfe5ec}
   .sd{color:#3a4a5c}
   .cov .cm,.cov .hint{color:#7c8b9c}
-  .nav,.ov{display:none!important}
+  .nav,.ov,.zv{display:none!important}
 }
 </style></head>
 <body>
@@ -2649,6 +2746,7 @@ ${slides}
   <div class="ovh"><h3>所有頁面</h3><button id="ovx">關閉（Esc）</button></div>
   <div class="grid" id="grid">${thumbs}</div>
 </div>
+${zoomViewerMarkup()}
 <script>
 (function(){
   var pages=[].slice.call(document.querySelectorAll('.pg'));
@@ -2687,6 +2785,7 @@ ${slides}
   });
   document.addEventListener('keydown',function(e){
     var k=e.key;
+    if(document.getElementById('zv').classList.contains('on')) return;
     if(k==='Escape'){ ov.classList.remove('on'); return; }
     if(k==='ArrowRight'||k==='PageDown'||k===' '){ e.preventDefault(); go(cur+1); }
     else if(k==='ArrowLeft'||k==='PageUp'){ e.preventDefault(); go(cur-1); }
@@ -2703,6 +2802,7 @@ ${slides}
   paint();
 })();
 <\/script>
+${zoomViewerScript()}
 ${marksBlob()}
 </body></html>`;
 }
