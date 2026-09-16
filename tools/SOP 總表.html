@@ -1072,8 +1072,9 @@ function prepare(text, r){
 
    截圖標註不在這裡做：那是另一整套編輯器，要改截圖請按「用 SOP 工具組開」。
    ══════════════════════════════════════════════════════════════ */
-const KINDS = [{v:'manual',l:'人工'},{v:'ai',l:'AI'}];
-const KIND_LEGACY = {system:'系統（舊版）'};
+/* 系統＝固定規則的自動化，真的 0 元；AI＝要呼叫模型，目前 0 元但之後可能按 token 計費，所以分開 */
+const KINDS = [{v:'manual',l:'人工'},{v:'system',l:'系統'},{v:'ai',l:'AI'}];
+const KIND_LEGACY = {};
 const ACTS = [{v:'exec',l:'執行'},{v:'judge',l:'判斷'},{v:'review',l:'審核'},
               {v:'wait',l:'等待'},{v:'maint',l:'維護'}];
 const UNITS = [{v:'sec',l:'秒'},{v:'min',l:'分鐘'},{v:'hr',l:'小時'}];
@@ -1095,7 +1096,7 @@ function grow(t){
 }
 const optH = (arr, sel) => arr.map(o =>
   '<option value="' + o.v + '"' + (o.v === sel ? ' selected' : '') + '>' + o.l + '</option>').join('');
-/* 舊檔可能還帶著「系統」。平常下拉只給人工／AI，目前值是舊值時要補進去，
+/* 舊檔可能帶著已停用的分類。目前值是停用值時要補進下拉，
    否則選單會顯示成「人工」，使用者一動別的欄位就被無聲改掉別人填的分類。 */
 const kindOpts = cur => KINDS.concat(KIND_LEGACY[cur] ? [{v:cur, l:KIND_LEGACY[cur]}] : []);
 
