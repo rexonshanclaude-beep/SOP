@@ -509,7 +509,21 @@ button,input,select,textarea{font-family:inherit}
 .app-form .f{display:flex;flex-direction:column;gap:6px;min-width:0}
 .app-form .r1{display:flex;gap:9px;align-items:center}
 .app-form .r2,
-.app-form .r2{padding:5px 8px;background:#f7f9fc;border:1px solid var(--line2);border-radius:7px}
+.app-form .r2{padding:5px 8px;background:#f7f9fc;border:1px solid var(--line2);border-radius:7px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+/* 預規劃／新增產值：靠右擺，跟左邊的「每次幾分鐘」分開，免得看成同一組數字 */
+.app-form .r2 .flag{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-left:auto}
+.app-form .ck{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;
+  font-size:11.5px;color:var(--ink3);padding:2px 7px;border:1px solid var(--line);
+  border-radius:20px;background:#fff;user-select:none}
+.app-form .ck:hover{border-color:#b9c6d6}
+.app-form .ck input{margin:0;width:12px;height:12px;accent-color:var(--brand)}
+.app-form .ck.on{color:#6a5b8c;border-color:#cfc4e2;background:#f4f1f8;font-weight:700}
+.app-form .ck.ad.on{color:#9c3a74;border-color:#efc0dc;background:#fceaf4}
+.app-form .ck.ad.on input{accent-color:#c9569b}
+.app-form .r2 .alt{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+  font-size:11.5px;color:#9c3a74}
+.app-form .r2 .alt.off{display:none}
 .app-form .r2 label,
 
 
@@ -2986,22 +3000,43 @@ const FORM = (() => {
    CONFIG ── 要調整選項或換算基準，直接改這一段就好
    ══════════════════════════════════════════════════════════════ */
 const CFG = {
-  rate: 5,                        // 工時換算金額：元／分鐘
+  /* 工時換算金額：元／分鐘。主管面板（01 AI 導入執行總覽）是讀彙整試算表的
+     「設定 › 每分鐘人力成本」，不是寫死的 —— 這裡要跟那格同值，改就兩邊一起改，
+     否則同一條流程在填表器與面板上看到的錢會對不起來。 */
+  rate: 5,
+  /* 新增產值的等效人工另訂單價：元／分鐘。「原本做不到的事」通常要請比較貴的人，
+     所以不跟 rate 共用（2026-09-16 使用者定 10 元）。只影響「新增產能（等效）」那一格，
+     實省、ROI、回本天數一律只吃 rate。 */
+  addonRate: 10,
+  /* 只有「人工」的工時要計錢。AI 與舊檔的「系統」一律 0 元 ——
+     機器跑的時間不是人力成本，混進來會把效益整個吃掉。
+     這一行才是計費的唯一依據，不要再靠顏色或動作標籤去猜。 */
+  paidKinds: ['manual'],
 
-  /* 步驟分類分兩層，兩層各自獨立、互不覆蓋。
-     第一層｜誰出力：判準是「沒有人坐在電腦前，這步會不會自己跑完」。
-       不會＝人工（人在 TIPTOP 一筆一筆查也算人工，因為人不動它就不會發生）；
-       會＝系統（排程／公式，既有自動化）或 AI。
-       只有「人工」的工時才是要省的成本，這一層決定顏色與長條。
-     第二層｜在做什麼：判斷＝決定接下來走哪條路；審核＝決定能不能放行；
-       維護＝為了讓流程本身能繼續跑（改規則、更新對照表、修錯），優先於其他四項；
-       執行是沒得歸類時的預設。
-     要增減選項改這兩段，顏色在 :root 與 .k-xxx／.a-xxx 對應。 */
+  /* 步驟標籤共四個維度，彼此獨立、互不覆蓋：
+
+     ① 誰出力（kind）  人工／AI。判準是「沒有人坐在電腦前，這步會不會自己跑完」。
+        不會＝人工（人在 TIPTOP 一筆一筆查也算人工，因為人不動它就不會發生）；
+        會＝AI。**只有這一個維度決定計不計錢**，見 paidKinds。
+        現況頁與 AI 導入後頁都可以自由選 —— 現況本來就可能已經有自動化，
+        導入後也可能刻意留人工把關，預設值只是猜得最準的那個。
+     ② 在做什麼（act）  執行／判斷／審核／等待／維護。純描述與分析用，
+        **完全不參與計算**。維護＝為了讓流程本身能繼續跑（改規則、更新對照表、
+        修錯），優先於其他四項；執行是沒得歸類時的預設。
+     ③ 計不計入（plan） 勾「預規劃」＝有規劃但還不能算進效益，不進任何總計，
+        只另外累計成「儲備」。
+     ④ 效益性質（addon）只在 AI 導入後頁出現。勾「新增產值」＝現況根本沒做、
+        導入後才多出來的事。它不省工時，改用 altDur（同一件事若請人做要多久）
+        換算成「等效人工」，單獨列帳，不混進實省。
+
+     要增減選項改下面兩段，顏色在 :root 與 .k-xxx／.a-xxx 對應。 */
   kinds: [
     {v:'manual', l:'人工'},
-    {v:'system', l:'系統'},
     {v:'ai',     l:'AI'}
   ],
+  /* 舊檔才有的值。顯示得出來、也算得對（0 元），但新步驟的下拉不再提供 ——
+     填表的人只要判斷「人做的還是機器做的」，不必再去分系統跟 AI 的差別。 */
+  kindsLegacy: [ {v:'system', l:'系統'} ],
   acts: [
     {v:'exec',   l:'執行'},
     {v:'judge',  l:'判斷'},
@@ -3041,7 +3076,10 @@ const PERIODS=[
    所以這裡只剩時間單位；不定期＝算不出頻率，不計入工時 */
 const FREQS=PERIODS.map(p=>({v:p.v,l:p.l})).concat([{v:'none',l:'不定期（不計入）'}]);
 const UNITS=[{v:'sec',l:'秒',s:1},{v:'min',l:'分鐘',s:60},{v:'hr',l:'小時',s:3600}];
-const KL=Object.fromEntries(CFG.kinds.map(k=>[k.v,k.l]));   // 第一層標籤
+const ALLKINDS=CFG.kinds.concat(CFG.kindsLegacy||[]);
+const KL=Object.fromEntries(ALLKINDS.map(k=>[k.v,k.l]));   // 第一層標籤（含舊檔的「系統」）
+/* 計費的唯一判斷。想知道「這一步要不要算錢」一律問它，不要各自寫 === 'manual' */
+const PAID=k=>CFG.paidKinds.indexOf(k)>=0;
 const AL=Object.fromEntries(CFG.acts.map(a=>[a.v,a.l]));    // 第二層標籤
 const KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
 const PM=Object.fromEntries(PERIODS.map(p=>[p.v,p.pm]));
@@ -3053,10 +3091,10 @@ const SHOWS=[{v:'day',l:'每日',d:D,p:'日'},
 const SHOWTIMES=[{v:'hr',l:'時',n:'人時',m:1},
                  {v:'min',l:'分',n:'人分',m:60},
                  {v:'sec',l:'秒',n:'人秒',m:3600}];
-const SCHEMA='sop-timesheet/3';
-const SCHEMAS_OLD=['sop-timesheet/2','sop-timesheet/1'];
-const DRAFT='sopEditorDraft/3';
-const DRAFTS_OLD=['sopEditorDraft/2','sopEditorDraft/1'];
+const SCHEMA='sop-timesheet/4';
+const SCHEMAS_OLD=['sop-timesheet/3','sop-timesheet/2','sop-timesheet/1'];
+const DRAFT='sopEditorDraft/4';
+const DRAFTS_OLD=['sopEditorDraft/3','sopEditorDraft/2','sopEditorDraft/1'];
 
 /* ── 狀態 ── */
 let S=blank(), active=null, activeList=null, dirty=false, saveFailed=false;
@@ -3075,6 +3113,9 @@ function newStep(list){
           kind:list==='aft'?'ai':'manual', act:'exec', title:'', desc:'',
           dur:null, unit:'min',                        // 每一件要花多久
           qty:1,                                       // 這一步每一次處理幾份
+          plan:false,                                  // 預規劃：不進任何總計
+          addon:false,                                 // 新增產值：只在 AI 導入後頁有意義
+          altDur:null, altUnit:'min',                  // 新增產值的等效人工時間
           orig:null, edits:null,                       // 原圖與標記（full 是合成後的結果）
           obj:'', iface:'',                            // 檔案／任務、在哪個介面做
           thumb:null, full:null};
@@ -3091,6 +3132,12 @@ function migStep(o,d){
   const st=Object.assign(newStep(),o);
   // 舊資料沒有的欄位一律回到中性值，不要沾到 newStep 從當下處理量拿到的預設
   if(!('qty'   in o)) st.qty=1;
+  /* ── v4：預規劃與新增產值。舊檔兩個都沒有，預設「計入」與「取代」，
+         數字跟改版前完全一樣，不會因為升級就憑空多出或少掉效益 */
+  st.plan  = !!o.plan;
+  st.addon = !!o.addon;
+  if(!('altDur'  in o)) st.altDur=null;
+  if(!('altUnit' in o)) st.altUnit='min';
 
   if('times' in o){                                    // ── v1
     const n=Number(o.every)>0?Number(o.every):1, t=Number(o.times)>0?Number(o.times):1;
@@ -3206,10 +3253,32 @@ function mh(st,l){                                // 月人時；null 表示資�
   l = l || listOf(st);
   return s*vol(l)*hc(l)*occ(l)/3600;
 }
-function sum(list){
-  let t=0, complete=true;
-  list.forEach(st=>{const m=mh(st); if(m==null) complete=false; else t+=m;});
-  return {total:t, complete};
+/* 新增產值的等效人工：同一件事若改由人做要花多久，換成月人時。
+   用的是跟 mh() 一樣的頻率／人數／次數，所以兩個數字可以直接比。 */
+function altH(st,l){
+  if(st.altDur==null||st.altDur==='') return null;
+  const u=UNITS.find(x=>x.v===st.altUnit)||UNITS[1];
+  l = l || listOf(st);
+  return Number(st.altDur)*u.s*vol(l)*hc(l)*occ(l)/3600;
+}
+/* 一次把四個口徑算完，呼叫端各取所需。分開算的理由：
+     manual（＝total）只有人工、且不含預規劃 —— 這是真的要付錢的部分，
+                      成本、淨改善、主管面板的回本天數全部只吃它。
+     wall            這條流程實際耗掉的時間（含 AI），只拿來當長條圖的分母，
+                      不然 AI 步驟會算出超過 100% 的佔比。
+     addon           新增產值的等效人工，**不是省下的工時**，單獨列帳。
+     plan            預規劃步驟的人工工時，儲備用，不進任何總計。
+   complete 只看「算不算得出來」，預規劃算不出來一樣要提醒，不然填一半沒人知道。 */
+function sum(list,l){
+  let manual=0, wall=0, addon=0, plan=0, complete=true;
+  (list||[]).forEach(st=>{
+    const m=mh(st,l);
+    if(m==null){ complete=false; }
+    else if(st.plan){ if(PAID(st.kind)) plan+=m; }
+    else { wall+=m; if(PAID(st.kind)) manual+=m; }
+    if(!st.plan&&st.addon){ const a=altH(st,l); if(a!=null) addon+=a; }
+  });
+  return {total:manual, manual:manual, wall:wall, addon:addon, plan:plan, complete:complete};
 }
 /* 顯示單位換算。U() 把單位字串一起組好回傳，
    這樣十幾個顯示點都不用管現在選的是人時還人分 */
@@ -3265,7 +3334,15 @@ const opt=(arr,sel,vk='v',lk='l')=>arr.map(o=>
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const calcHTML=(m,hot)=>m==null?'<span class="calc na">工時待補</span>'
   :`<span class="calc${hot?' hot':''}">≈ <b>${fmt(cv(m))}</b> ${U().u}</span>`;
-const rowWarn=st=>!String(st.title||'').trim()||mh(st)==null;
+/* 預規劃步驟本來就常常還沒量時間，不用一直亮警示；沒名字還是要提醒。
+   另外「勾了新增產值卻沒填等效人工時間」＝那格附加產值算不出來，一樣要標。 */
+/* 舊檔可能還帶著「系統」。下拉平常只給人工／AI，但目前值是舊值時要把它補進去，
+   否則選單會顯示成「人工」，使用者一動別的欄位就被無聲改掉別人填的分類。 */
+const kindOpts=cur=>KL[cur]&&!CFG.kinds.some(k=>k.v===cur)
+  ? CFG.kinds.concat([{v:cur,l:KL[cur]+'（舊版）'}]) : CFG.kinds;
+const rowWarn=st=>!String(st.title||'').trim()
+  ||(!st.plan&&mh(st)==null)
+  ||(!st.plan&&st.addon&&(st.altDur==null||st.altDur===''));
 /* 補充說明的框跟著內容長高。先歸零再量 scrollHeight，否則縮不回去 */
 function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
 const growAll=root=>(root||document).querySelectorAll('textarea.d').forEach(autoGrow);
@@ -3282,7 +3359,9 @@ function stepHTML(st,i,list,arr,peak){
     </div>
     <div class="f">
       <div class="r1">
-        <select class="tagsel k-${st.kind}" data-k="kind" title="誰出力：沒有人坐在電腦前，這步會自己跑完嗎？">${opt(CFG.kinds,st.kind)}</select>
+        <select class="tagsel k-${st.kind}" data-k="kind"
+                title="誰出力：沒有人坐在電腦前，這步會自己跑完嗎？不會＝人工。只有人工要計錢，AI 是 0 元"
+                >${opt(kindOpts(st.kind),st.kind)}</select>
         <select class="actsel a-${st.act}" data-k="act" title="在做什麼">${opt(CFG.acts,st.act)}</select>
         <input class="i t" data-k="title" value="${esc(st.title)}" placeholder="步驟名稱，例：以料號於 TIPTOP 查廠商">
         ${calcHTML(m,hot)}
@@ -3296,6 +3375,20 @@ function stepHTML(st,i,list,arr,peak){
         <input class="i q" data-k="qty" type="number" min="0" step="any" value="${st.qty??1}"
                title="這一步每一次要處理幾份。只是記錄數量，不會乘進工時">
         <span class="fx" title="份數只記錄數量，不計入工時">份</span>
+        <span class="flag">
+          <label class="ck${st.plan?' on':''}"
+                 title="有規劃、但還不能算進效益。勾了這一步就完全不進總計，只累計成「儲備」">
+            <input type="checkbox" data-k="plan"${st.plan?' checked':''}>預規劃</label>
+          ${list==='aft'?`<label class="ck ad${st.addon?' on':''}"
+                 title="現況根本沒做、導入後才多出來的事。它不省工時，改用右邊的等效人工時間單獨列帳">
+            <input type="checkbox" data-k="addon"${st.addon?' checked':''}>新增產值</label>
+          <span class="alt${st.addon?'':' off'}"
+                title="同一件事若改由人來做，每次要花多久。附加產值就用這個時間換算成金額">
+            人工要<input class="i n2" data-k="altDur" type="number" min="0" step="any"
+                   value="${st.altDur??''}" placeholder="0">
+            <select class="i s" data-k="altUnit" style="width:70px">${opt(UNITS,st.altUnit||'min')}</select>
+          </span>`:''}
+        </span>
       </div>
       <div class="r3">
         <span class="pair">
@@ -3395,36 +3488,55 @@ function renderCmp(){
   const pct=rn.total>0?(rn.total-ra.total)/rn.total*100:null;
   const bothReady=S.now.length&&S.aft.length;
 
+  /* 三格全部是「人工工時」。AI 與系統跑的時間不進總和 ——
+     錢和工時同一個分母，才不會出現「省 90% 的錢卻只省 10% 的工時」這種鬼話。
+     旁邊的小字交代有幾步被排除，免得使用者以為工具漏算。 */
+  const sideNote=(arr,r)=>{
+    const ai=arr.filter(x=>!x.plan&&!PAID(x.kind)).length;
+    const pl=arr.filter(x=>x.plan).length;
+    return [`${arr.length} 步`, ai?`${ai} 步非人工（0 元）`:'', pl?`${pl} 步預規劃`:'',
+            r.complete?'':'含算不出來的步驟'].filter(Boolean).join(' · ');
+  };
   document.getElementById('cmpStat').innerHTML=
-   `<div><div class="l">現況</div><div class="n">${fmt(cv(rn.total))} <small>${u.u}</small></div>
-      <div class="s">${S.now.length} 步${rn.complete?'':' · 含算不出來的步驟'}</div></div>
-    <div><div class="l">AI 導入後</div><div class="n" style="color:var(--ai)">${fmt(cv(ra.total))} <small>${u.u}</small></div>
-      <div class="s">${S.aft.length} 步${ra.complete?'':' · 含算不出來的步驟'}</div></div>
+   `<div><div class="l">現況人工</div><div class="n">${fmt(cv(rn.total))} <small>${u.u}</small></div>
+      <div class="s">${sideNote(S.now,rn)}</div></div>
+    <div><div class="l">AI 導入後人工</div><div class="n" style="color:var(--ai)">${fmt(cv(ra.total))} <small>${u.u}</small></div>
+      <div class="s">${sideNote(S.aft,ra)}</div></div>
     <div><div class="l">淨改善</div><div class="n" style="color:${pct==null?'var(--ink3)':pct>=0?'var(--warn)':'var(--ink)'}">${
       pct==null?'—':(pct>=0?'↓ ':'↑ ')+Math.abs(pct).toFixed(1)+'<small>%</small>'}</div>
       <div class="s">${pct==null||!bothReady?'兩版都填了才算得出來'
         :(pct>=0?'省下 ':'多出 ')+fmt(Math.abs(cv(rn.total-ra.total)))+' '+u.u}</div></div>`;
 
-  /* 工時換成錢。主管看的是這三個數字，不是人時。 */
-  const money=mh=>mh==null?null:mh*60*CFG.rate;          // 月工時 → 元／月
-  const un=u.l.replace('每','');                          // 日／週／月
+  /* 工時換成錢。三個數字**各自獨立、不加總** —— 最怕的就是有人把「省下的現金」
+     和「估出來的價值」併成一個大數字去要預算。要講合計就寫成
+     「A ＋ B（含等效估算）」，永遠帶著括號。
+     回本天數、ROI 只能吃第一格，因為只有它是真的不用付的錢。 */
+  const money=h=>h==null?null:h*60*CFG.rate;            // 月人時 → 元／月
   /* 上面的工時卡是四捨五入過的，這裡要給算得回去的精度，
-     不然使用者拿 0.74 × 60 × 14 一算對不上，會以為工具算錯 */
+     不然使用者拿 0.74 × 60 × 5 一算對不上，會以為工具算錯 */
   const f3=v=>v==null?'—':(v>=100?Math.round(v).toLocaleString()
             :v>=10?v.toFixed(2):v.toFixed(3));
   const NT=v=>v==null?'—':Math.round(v).toLocaleString('en-US');
-  const costNow=money(rn.total), costAft=money(ra.total);
-  const save=(costNow!=null&&costAft!=null)?costNow-costAft:null;
+  const mSave =bothReady?money(rn.total)-money(ra.total):null;   // 元／月，實省
+  const mAddon=ra.addon==null?null:ra.addon*60*CFG.addonRate;    // 元／月，等效（另訂單價）
+  const mPlan =money(rn.plan+ra.plan);                           // 元／月，儲備
+  const planN =S.now.filter(x=>x.plan).length+S.aft.filter(x=>x.plan).length;
+  const addonN=S.aft.filter(x=>!x.plan&&x.addon).length;
   document.getElementById('cmp3').innerHTML=
-   `<div><div class="l">現況成本</div><div class="n">${NT(cvH(costNow))} <small>元/${un}</small></div>
-      <div class="s">${f3(cvH(rn.total))} 小時 × 60 分 × ${CFG.rate} 元</div></div>
-    <div><div class="l">AI 導入後成本</div><div class="n">${NT(cvH(costAft))} <small>元/${un}</small></div>
-      <div class="s">${bothReady
-        ? f3(cvH(ra.total))+' 小時 × 60 分 × '+CFG.rate+' 元（已含維護）'
-        : '兩版都填了才算得出來'}</div></div>
-    <div><div class="l">一年省下</div>
-      <div class="n" style="color:${save>0?'var(--ai)':'var(--ink3)'}">${NT(save==null?null:save*12)} <small>元</small></div>
-      <div class="s">${save==null?'兩版都填了才算得出來':'每月 '+NT(save)+' 元'}</div></div>`;
+   `<div><div class="l">實省人力</div>
+      <div class="n" style="color:${mSave>0?'var(--ai)':'var(--ink3)'}">${NT(mSave==null?null:mSave*12)} <small>元/年</small></div>
+      <div class="s">${mSave==null?'兩版都填了才算得出來'
+        :'每月 '+NT(mSave)+' 元　·　'+f3(cvH(rn.total))+' → '+f3(cvH(ra.total))+' 小時／'+u.l.replace('每','')}</div></div>
+    <div><div class="l">新增產能（等效）</div>
+      <div class="n" style="color:${mAddon>0?'#c9569b':'var(--ink3)'}">${NT(mAddon>0?mAddon*12:null)} <small>元/年</small></div>
+      <div class="s">${mAddon>0
+        ? addonN+' 步原本沒做　·　等效 '+f3(ra.addon)+' 人時/月 × '+CFG.addonRate+' 元／分鐘，不是省下的現金'
+        : '沒有標記「新增產值」的步驟'}</div></div>
+    <div><div class="l">儲備中</div>
+      <div class="n" style="color:${mPlan>0?'#9a8fb8':'var(--ink3)'}">${NT(mPlan>0?mPlan*12:null)} <small>元/年</small></div>
+      <div class="s">${planN
+        ? planN+' 步預規劃　·　落地後才會進上面的實省'
+        : '沒有標記「預規劃」的步驟'}</div></div>`;
 
   const colA=document.getElementById('cmpColA'), colB=document.getElementById('cmpColB');
   colA.innerHTML=S.now.length?S.now.map((st,i)=>cmpNode(st,i,'now',gmax)).join('')
@@ -3452,12 +3564,12 @@ function renderSide(){
       ? `現況 ${fmt(cv(rn.total))} → AI 後 ${fmt(cv(ra.total))} ${u.u}`
       : '兩條流程都填了才算得出來';
   }else{
-    kLab.textContent=which==='aft'?'AI 導入後工時':'現況工時';
+    kLab.textContent=which==='aft'?'AI 導入後人工工時':'現況人工工時';
     kBig.innerHTML=arr.length?(r.total>0||r.complete?fmt(cv(r.total))+` <span>${u.u}</span>`:'—'):'—';
     kSub.textContent=
       !arr.length?'尚未填寫步驟':
       !r.complete?'部分步驟資料不足，這是已填部分的小計':
-      `${arr.length} 步已全部換算　·　每月以 ${D} 個工作日、${W} 週計`;
+      `${arr.length} 步已換算　·　只計人工，AI 為 0　·　每月 ${D} 個工作日、${W} 週`;
   }
 
   const cmp=document.getElementById('kCmp');
@@ -3470,7 +3582,9 @@ function renderSide(){
 
   /* 長條是「這條流程的時間花在哪幾步」，各步佔該流程總工時的比例。
      跟「哪一步被哪一步取代」無關 —— 那種對應關係工具沒有、也不該猜。 */
-  const bArr=tab==='cmp'?S.now:arr, bTot=tab==='cmp'?rn.total:r.total;
+  /* 長條的分母要用 wall（含 AI 的實際耗時），不是只算人工的 total ——
+     否則 AI 步驟會除出超過 100% 的佔比。 */
+  const bArr=tab==='cmp'?S.now:arr, bTot=tab==='cmp'?rn.wall:r.wall;
   document.getElementById('kBarHead').textContent =
     !bArr.length ? '' : (tab==='aft' ? 'AI 導入後的時間花在哪' : '現況的時間花在哪');
   const vals=bArr.map(mh).filter(v=>v!=null), peak=vals.length?Math.max(...vals):0;
@@ -3528,8 +3642,16 @@ function checks(){
       '全自動不留人把關的情況少見，確認是否漏填');
   if(S.aft.length===1) push('wr','AI 導入後只有 1 步',
     '導入後通常還會有維護規則、例外處理、結果抽查等工作，漏填會高估效益');
+  const noAlt=S.aft.filter(x=>!x.plan&&x.addon&&(x.altDur==null||x.altDur===''));
+  if(noAlt.length) push('ng',`${noAlt.length} 個「新增產值」步驟沒填等效人工時間`,
+    '沒有這個時間就算不出附加產值。填「同一件事若改由人來做，每次要花多久」');
+
+  const planN=S.now.filter(x=>x.plan).length+S.aft.filter(x=>x.plan).length;
+  if(planN) push('wr',`${planN} 個步驟標為「預規劃」`,
+    '這些步驟完全不進效益總計，只累計成「儲備中」。確認是不是真的還沒上線');
+
   if(S.now.length&&S.aft.length&&rn.total>0&&ra.total===0)
-    push('wr','AI 導入後總工時為 0','完全無人工介入的情況少見，請確認是否漏填');
+    push('wr','AI 導入後沒有留下任何人工工時','整段換成 AI 是最好的結果，但請確認維護與抽查的人工有沒有漏填');
 
   return out;
 }
@@ -3600,10 +3722,19 @@ function fileName(){
 function buildHTML(){
   const data=JSON.parse(JSON.stringify(S));
   data.exportedAt=new Date().toISOString();
-  data.config={daysPerMonth:D,weeksPerMonth:W,ratePerMinute:CFG.rate};
+  data.config={daysPerMonth:D,weeksPerMonth:W,ratePerMinute:CFG.rate,addonRatePerMinute:CFG.addonRate,
+               paidKinds:CFG.paidKinds.slice()};
   const rn=sum(S.now), ra=sum(S.aft);
+  /* nowTotal／aftTotal 從 v4 起是**只算人工、且排除預規劃**的月人時。
+     下游（Apps Script、彙整試算表、主管面板）直接拿它乘單價就是成本，
+     不要再自己加總步驟 —— 那樣會把 AI 跑的時間也算成人力。
+     wall／addon／plan 是另外三個口徑，各自獨立，不可互相加總。 */
   data.summary={nowTotal:rn.total,nowComplete:rn.complete,aftTotal:ra.total,aftComplete:ra.complete,
+                nowWall:rn.wall,aftWall:ra.wall,
+                addonHours:ra.addon,planHours:rn.plan+ra.plan,
                 nowSteps:S.now.length,aftSteps:S.aft.length,
+                planSteps:S.now.filter(x=>x.plan).length+S.aft.filter(x=>x.plan).length,
+                addonSteps:S.aft.filter(x=>!x.plan&&x.addon).length,
                 savePct:rn.total>0?(rn.total-ra.total)/rn.total*100:null};
   // 把 < 轉義，避免資料裡的字串把 script 區塊提早收尾
   const json=JSON.stringify(data).replace(/</g,'\\u003c');
@@ -3736,7 +3867,7 @@ document.addEventListener('input',e=>{
   const k=e.target.dataset.k; if(!k) return;
   const st=S[row.dataset.list].find(x=>x.id===row.dataset.id); if(!st) return;
   let v=e.target.value;
-  if(['dur','hc','every','qty'].includes(k)) v=(v===''?null:Number(v));
+  if(['dur','hc','every','qty','altDur'].includes(k)) v=(v===''?null:Number(v));
   if(k==='desc') autoGrow(e.target);
   // 純文字欄位不重建 DOM，避免游標跳掉
   st[k]=v; mark();
@@ -3746,6 +3877,10 @@ document.addEventListener('change',e=>{
   const row=e.target.closest('.step'); if(!row) return;
   const k=e.target.dataset.k; if(!k) return;
   const st=S[row.dataset.list].find(x=>x.id===row.dataset.id); if(!st) return;
+  /* 勾選會讓同一列多出／收起「人工要 N 分鐘」那格，所以要重畫整列 */
+  if(k==='plan'||k==='addon'){ st[k]=e.target.checked; mark(); render(); return; }
+  if(k==='altUnit'){ st.altUnit=e.target.value; mark();
+    renderCmp(); renderSide(); renderChecks(); return; }
   if(k==='kind'||k==='act'){ st[k]=e.target.value; mark();
     // 只換色，不重建，選單焦點才不會掉
     e.target.className=k==='kind'?('tagsel k-'+st.kind):('actsel a-'+st.act);
@@ -4069,6 +4204,7 @@ h1,h2,h3,h4{margin:0;font-weight:700}
   </div>
   <div class="v on" id="v-cmp">
     <div class="s3" id="stat"></div>
+    <div class="s3" id="cost3"></div>
     <div class="cmp">
       <div><div class="ch a"><b>現況流程</b><span class="c" id="cn"></span><span class="t" id="tn"></span></div>
         <div id="colA"></div><div class="cf a">合計 <b id="fn"></b> <span class="uu"></span></div></div>
@@ -4088,6 +4224,13 @@ var DATA=JSON.parse(document.getElementById('sop-data').textContent);
 var KL={manual:'人工',system:'系統',ai:'AI'};                                  // 第一層｜誰出力
 var AL={exec:'執行',judge:'判斷',review:'審核',wait:'等待',maint:'維護'};       // 第二層｜在做什麼
 var KC={manual:'var(--manual)',system:'var(--system)',ai:'var(--ai)'};
+/* 只有「人工」的工時要計錢。AI 與舊檔的「系統」一律 0 元 ——
+   跟填表器 CFG.paidKinds 同一套規則，舊檔沒帶這欄就用預設。 */
+var PAIDK={}; ((DATA.config&&DATA.config.paidKinds)||['manual']).forEach(function(k){ PAIDK[k]=1; });
+function PAID(k){ return !!PAIDK[k]; }
+var RATE=(DATA.config&&DATA.config.ratePerMinute)||5;
+/* 新增產值的等效人工另訂單價；舊檔沒帶這欄就用 10 */
+var ARATE=(DATA.config&&DATA.config.addonRatePerMinute)||10;
 var D=(DATA.config&&DATA.config.daysPerMonth)||20.8, W=(DATA.config&&DATA.config.weeksPerMonth)||4.33;
 var PM={day:D,week:W,month:1,quarter:1/3,year:1/12};
 var UN={sec:1,min:60,hr:3600}, UL={sec:'秒',min:'分',hr:'小時'};
@@ -4125,11 +4268,36 @@ function mh(s,l){ if(s.dur==null||s.dur==='')return null;
   return Number(s.dur)*(UN[s.unit]||60)*VOLQ(l)*hcOf(l)*occ(l)/3600; }
 function f(n){ return n==null?'—':n>=100?Math.round(n).toLocaleString():n>=10?n.toFixed(1)
   :(n>0&&n<0.01?'<0.01':n.toFixed(2)); }
-function tot(a){ var t=0; a.forEach(function(s){var m=mh(s); if(m!=null)t+=m;}); return t; }
+/* 新增產值的等效人工：同一件事若改由人做要多久，用跟 mh() 一樣的頻率換算 */
+function altH(s,l){ if(s.altDur==null||s.altDur==='')return null;
+  l = l || listOf(s);
+  return Number(s.altDur)*(UN[s.altUnit]||60)*VOLQ(l)*hcOf(l)*occ(l)/3600; }
+/* 四個口徑，跟填表器同一套定義，不可互相加總：
+     manual 只有人工、且排除預規劃 —— 真正要付錢的就這個
+     wall   含 AI 的實際耗時，只給長條當分母
+     addon  新增產值的等效人工，不是省下的工時
+     plan   預規劃，儲備用，不進任何總計 */
+function roll(a,l){
+  var o={manual:0,wall:0,addon:0,plan:0};
+  (a||[]).forEach(function(s){
+    var m=mh(s,l);
+    if(m!=null){
+      if(s.plan){ if(PAID(s.kind)) o.plan+=m; }
+      else { o.wall+=m; if(PAID(s.kind)) o.manual+=m; }
+    }
+    if(!s.plan&&s.addon){ var x=altH(s,l); if(x!=null) o.addon+=x; }
+  });
+  return o;
+}
+function NT(v){ return v==null?'—':Math.round(v).toLocaleString('en-US'); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
-var NOW=DATA.now||[], AFT=DATA.aft||[], tn=tot(NOW), ta=tot(AFT);
+var NOW=DATA.now||[], AFT=DATA.aft||[];
+var RN=roll(NOW,'now'), RA=roll(AFT,'aft');
+/* 合計一律是人工工時 —— 錢和工時同一個分母，才不會出現
+   「省 90% 的錢卻只省 10% 的工時」這種對不起來的數字 */
+var tn=RN.manual, ta=RA.manual;
 var one=function(s){ return mh(s); };   // map 會多傳 index，包一層免得被當成 list
 var all=NOW.concat(AFT).map(one).filter(function(v){return v!=null;});
 var GMAX=all.length?Math.max.apply(null,all):0;
@@ -4162,6 +4330,10 @@ function node(s,i,isAft,pk,showPct,colTot){
    (s.iface?'<span class="p">'+esc(s.iface)+'</span>':'')+
    '<span class="p'+(hot?' r':'')+'">每次 '+DUR(s)+' · '+(Number(s.qty)||1)+' 份 · '+
      FLT(isAft?'aft':'now')+' · '+hcOf(isAft?'aft':'now')+' 人</span>'+
+   (s.plan?'<span class="p" style="background:#f4f1f8;border-color:#cfc4e2;color:#6a5b8c">預規劃 · 不計入</span>':'')+
+   (!s.plan&&s.addon?'<span class="p" style="background:#fceaf4;border-color:#efc0dc;color:#9c3a74">新增產值'+
+     (altH(s,isAft?'aft':'now')!=null?' · 等效 '+f(cv(altH(s,isAft?'aft':'now')))+' '+U().u:'')+'</span>':'')+
+   (!s.plan&&!PAID(s.kind)?'<span class="p" style="color:var(--ink3)">0 元 · 非人工</span>':'')+
    '<span class="p'+(na?' na':hot?' r':isAft?' g':'')+'">'+(na?'工時資料不足':f(cv(m))+' '+U().u+
      (showPct&&colTot>0?' · '+(m/colTot*100).toFixed(0)+'%':''))+'</span>'+
    '</div><div class="sc"><i style="width:'+w+'%;background:'+
@@ -4175,17 +4347,50 @@ function col(arr,isAft,el,pk,showPct,colTot){
 }
 function paint(){
   var u=U(), pct=tn>0?(tn-ta)/tn*100:null;
+  /* 小字交代有幾步被排除在總和外，免得看的人以為工具漏算 */
+  var note=function(arr){
+    var ai=0, pl=0;
+    arr.forEach(function(s){ if(s.plan) pl++; else if(!PAID(s.kind)) ai++; });
+    var t=[arr.length+' 步'];
+    if(ai) t.push(ai+' 步非人工（0 元）');
+    if(pl) t.push(pl+' 步預規劃');
+    return t.join(' · ');
+  };
   document.getElementById('stat').innerHTML=
-   '<div><div class="l">現況</div><div class="n">'+f(cv(tn))+' <small>'+u.u+'</small></div>'+
-   '<div class="l" style="font-weight:400;color:var(--ink3)">'+NOW.length+' 步</div></div>'+
-   '<div><div class="l">AI 導入後</div><div class="n" style="color:var(--ai)">'+f(cv(ta))+' <small>'+u.u+'</small></div>'+
-   '<div class="l" style="font-weight:400;color:var(--ink3)">'+AFT.length+' 步</div></div>'+
+   '<div><div class="l">現況人工</div><div class="n">'+f(cv(tn))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+note(NOW)+'</div></div>'+
+   '<div><div class="l">AI 導入後人工</div><div class="n" style="color:var(--ai)">'+f(cv(ta))+' <small>'+u.u+'</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+note(AFT)+'</div></div>'+
    '<div><div class="l">淨改善</div><div class="n" style="color:var(--warn)">'+
    (pct==null?'—':(pct>=0?'↓ ':'↑ ')+Math.abs(pct).toFixed(1)+'<small>%</small>')+'</div>'+
    '<div class="l" style="font-weight:400;color:var(--ink3)">'+
    (pct==null?'資料不足':'淨省 '+f(cv(tn-ta))+' '+u.u)+'</div></div>';
+
+  /* 三個金額**各自獨立、不加總**。只有第一格是真的不用付的現金，
+     回本與 ROI 只能吃它；第二格是估出來的等效值，第三格還沒上線。 */
+  var perM=function(h){ return h*60*RATE; };
+  var both=NOW.length&&AFT.length;
+  var mSave=both?perM(tn)-perM(ta):null, mAddon=RA.addon*60*ARATE, mPlan=perM(RN.plan+RA.plan);
+  var planN=0, addonN=0;
+  NOW.concat(AFT).forEach(function(s){ if(s.plan) planN++; });
+  AFT.forEach(function(s){ if(!s.plan&&s.addon) addonN++; });
+  document.getElementById('cost3').innerHTML=
+   '<div><div class="l">實省人力</div><div class="n" style="color:'+(mSave>0?'var(--ai)':'var(--ink3)')+'">'+
+     NT(mSave==null?null:mSave*12)+' <small>元/年</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+
+     (mSave==null?'兩版都填了才算得出來':'每月 '+NT(mSave)+' 元 · '+RATE+' 元／分鐘')+'</div></div>'+
+   '<div><div class="l">新增產能（等效）</div><div class="n" style="color:'+(mAddon>0?'#c9569b':'var(--ink3)')+'">'+
+     NT(mAddon>0?mAddon*12:null)+' <small>元/年</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+
+     (mAddon>0?addonN+' 步原本沒做 · '+ARATE+' 元／分鐘 · 不是省下的現金':'沒有新增產值的步驟')+'</div></div>'+
+   '<div><div class="l">儲備中</div><div class="n" style="color:'+(mPlan>0?'#9a8fb8':'var(--ink3)')+'">'+
+     NT(mPlan>0?mPlan*12:null)+' <small>元/年</small></div>'+
+   '<div class="l" style="font-weight:400;color:var(--ink3)">'+
+     (planN?planN+' 步預規劃 · 落地後才進實省':'沒有預規劃的步驟')+'</div></div>';
+
   col(NOW,false,'colA',pkN,false,0); col(AFT,true,'colB',pkA,false,0);
-  col(NOW,false,'colA2',pkN,true,tn); col(AFT,true,'colB2',pkA,true,ta);
+  /* 佔比的分母用 wall（含 AI 的實際耗時），不然 AI 步驟會除出超過 100% */
+  col(NOW,false,'colA2',pkN,true,RN.wall); col(AFT,true,'colB2',pkA,true,RA.wall);
   document.getElementById('cn').textContent=NOW.length+' 步';
   document.getElementById('ca').textContent=AFT.length+' 步';
   document.getElementById('tn').textContent=f(cv(tn))+' '+u.u;
@@ -4232,7 +4437,10 @@ const loaded=loadDraft();
 if(loaded==='old') stamp('已接續舊版草稿並轉成新格式');
 else if(loaded) stamp('已接續上次的草稿');
 fillMeta(); render();
-return { get state(){ return S; }, render, saveDraft, newStep, blank };
+/* importFile／buildHTML／fileName 是給「SOP 總表」的嵌入接口用的，
+   本頁自己的按鈕仍直接呼叫同名函式，不經過這裡。 */
+return { get state(){ return S; }, render, saveDraft, newStep, blank,
+         importFile, buildHTML, fileName };
 })();
 unown();</script>
 
@@ -4246,6 +4454,55 @@ function show(v){
   window.dispatchEvent(new Event('resize'));
 }
 document.querySelectorAll('.vbar .vtab').forEach(b => b.onclick = () => show(b.dataset.v));
+
+/* ══════════════════════════════════════════════════════════
+   「SOP 總表」嵌入接口
+   總表面板（同目錄的「SOP 總表.html」）用 iframe 載入這支工具，
+   再用 postMessage 把一份 .sop.html 的全文送進來、把改好的全文收回去。
+   這樣編輯器與標註器只有這一份原始碼 —— 總表不必再抄一遍，
+   之後改欄位也不會兩邊走鐘。
+
+   安全性：只認 event.source === window.parent，且訊息要帶 ns:'sop-hub'。
+   回覆一律用 '*'，因為兩邊都是 file:// 開的本機檔，origin 是 "null"，
+   指定 targetOrigin 會被瀏覽器直接擋掉。反正對象就是嵌我們的那一頁。
+   ══════════════════════════════════════════════════════════ */
+(() => {
+  if (window.parent === window) return;          // 不是被嵌入就整段不啟用
+  const NS = 'sop-hub';
+  const send = m => window.parent.postMessage(Object.assign({ ns: NS }, m), '*');
+
+  window.addEventListener('message', e => {
+    if (e.source !== window.parent) return;
+    const d = e.data;
+    if (!d || d.ns !== NS) return;
+
+    if (d.type === 'open'){
+      show('form');                              // 總表送進來的一定是工時檔
+      try {
+        FORM.importFile(d.html);
+        send({ type: 'opened', name: d.name, ok: true });
+      } catch (err){
+        send({ type: 'opened', name: d.name, ok: false, error: String(err && err.message || err) });
+      }
+      return;
+    }
+
+    if (d.type === 'collect'){
+      /* 回傳「現在畫面上這份」組出來的完整 HTML。
+         檔名也一起回去 —— 部門或題目被改過時，總表要知道該不該換檔名。 */
+      try {
+        send({ type: 'collected', token: d.token, ok: true,
+               html: FORM.buildHTML(), file: FORM.fileName() });
+      } catch (err){
+        send({ type: 'collected', token: d.token, ok: false,
+               error: String(err && err.message || err) });
+      }
+      return;
+    }
+  });
+
+  send({ type: 'hello' });                       // 告訴總表「我載好了，可以送檔進來」
+})();
 
 /* ══════════════════════════════════════════════════════════
    帶進 SOP 盤點

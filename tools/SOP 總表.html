@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP 總表</title>
+<style>
+/* 刻意沿用「SOP 工具組.html」的同一組 token，兩支放在一起看才像同一套工具 */
+:root{
+  --bg:#f3f6fa; --card:#fff; --ink:#1d2b38; --ink2:#44586a; --ink3:#7d8fa0;
+  --line:#dfe5ec; --line2:#eef2f6;
+  --brand:#2f5fd0; --brand-soft:#eaf0fd;
+  --ai:#1f9d6b; --ai-soft:#e7f6ef;
+  --warn:#d4483b; --warn-soft:#fdecea;
+  --amber:#b07d0a; --amber-soft:#fdf5e2;
+  --manual:#e8833a;
+  --plan:#6a5b8c; --plan-soft:#f4f1f8;
+  --addon:#9c3a74; --addon-soft:#fceaf4;
+  --r:10px;
+  --font:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  font-size:14px;line-height:1.6;display:flex;flex-direction:column}
+
+/* ── 頂列 ── */
+.bar{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.bar h1{font-size:16px;margin:0;font-weight:800;letter-spacing:.01em}
+.bar .dir{font-size:12px;color:var(--ink3);max-width:38ch;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.bar .sp{flex:1}
+button{font-family:inherit;font-size:13px;padding:6px 13px;border-radius:8px;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);cursor:pointer;white-space:nowrap}
+button:hover:not(:disabled){border-color:#b9c6d6;color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.pri{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+button.pri:hover:not(:disabled){background:#2550b4;color:#fff}
+button.danger{color:var(--warn);border-color:#f0c4bf}
+.rate{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink3)}
+.rate input{width:58px;text-align:right;font-family:inherit;font-size:13px;
+  padding:5px 7px;border:1px solid var(--line);border-radius:7px;color:var(--ink)}
+
+main{flex:1;min-height:0;overflow:auto;padding:16px}
+.wrap{max-width:1500px;margin:0 auto}
+
+/* ── 三張總計卡 ── */
+.s3{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;background:#fff;margin-bottom:14px}
+.s3>div{flex:1;min-width:210px;padding:14px 18px;border-left:1px solid var(--line)}
+.s3>div:first-child{border-left:0}
+.s3 .l{font-size:11.5px;font-weight:800;color:var(--ink3);letter-spacing:.05em}
+.s3 .n{font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:2px 0}
+.s3 .n small{font-size:12.5px;font-weight:700;color:var(--ink3)}
+.s3 .s{font-size:12px;color:var(--ink3);line-height:1.55}
+.s3 .b1{border-top:3px solid var(--ai)}
+.s3 .b1 .n{color:var(--ai)}
+.s3 .b2 .n{color:var(--addon)}
+.s3 .b3 .n{color:var(--plan)}
+.note{font-size:12px;color:var(--ink3);margin:-6px 0 14px;padding-left:2px}
+
+/* ── 分頁 ── */
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tabs button.on{background:var(--brand-soft);border-color:#bed0f5;color:var(--brand);font-weight:700}
+.tabs .sp{flex:1}
+.tabs input.q{font-family:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);
+  border-radius:8px;width:210px;color:var(--ink)}
+
+/* ── 表 ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:1080px}
+th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line2);vertical-align:middle}
+th{background:#f7f9fc;font-size:11.5px;font-weight:800;color:var(--ink2);
+  white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer;user-select:none}
+th.nos{cursor:default}
+th .ar{color:var(--brand);font-size:10px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.grp td{background:#eef2f7;font-weight:800;font-size:12px;color:var(--ink2);
+  border-bottom:1px solid var(--line)}
+tr.tot td{background:#f7f9fc;font-weight:800;border-top:2px solid var(--line)}
+tbody tr:hover:not(.grp):not(.tot){background:#f9fbfe}
+/* 被取代的舊檔：看得到、但一眼知道它不算數 */
+tbody tr.dup td{opacity:.5}
+tbody tr.dup td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.ttl{font-weight:700;color:var(--ink)}
+.fn{font-size:11px;color:var(--ink3);display:block;margin-top:1px;
+  max-width:26ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700;
+  border:1px solid var(--line);background:#f1f4f8;color:var(--ink3);white-space:nowrap}
+.pill.ok{background:var(--ai-soft);border-color:#a9ddc4;color:#1a7a4f}
+.pill.wr{background:var(--amber-soft);border-color:#ecd9a4;color:var(--amber)}
+.pill.ng{background:var(--warn-soft);border-color:#f0c4bf;color:var(--warn)}
+.pill.old{background:var(--plan-soft);border-color:#cfc4e2;color:var(--plan)}
+.pill.ad{background:var(--addon-soft);border-color:#efc0dc;color:var(--addon)}
+.good{color:var(--ai);font-weight:700}
+.dim{color:var(--ink3)}
+
+.empty{padding:56px 24px;text-align:center;color:var(--ink3)}
+.empty b{display:block;font-size:16px;color:var(--ink2);margin-bottom:6px}
+.empty .hint{font-size:12.5px;margin-top:10px;line-height:1.8}
+
+/* ── 問題清單 ── */
+.iss{padding:4px 0}
+.iss .row{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-bottom:1px solid var(--line2)}
+.iss .row:last-child{border-bottom:0}
+.iss .row .w{flex:1;min-width:0}
+.iss .row .t{font-weight:700}
+.iss .row .d{font-size:12px;color:var(--ink3)}
+
+/* ── 編輯 overlay ── */
+.ov{position:fixed;inset:0;background:rgba(16,26,36,.62);display:none;
+  flex-direction:column;z-index:50}
+.ov.on{display:flex}
+.ov .ohead{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 14px;background:#fff;border-bottom:1px solid var(--line)}
+.ov .ohead b{font-size:14px}
+.ov .ohead .sp{flex:1}
+.ov iframe{flex:1;width:100%;border:0;background:#fff;min-height:0}
+
+/* ── 就地編輯（不離開總表，所以不是另一頁，是同一頁換一個 view） ── */
+.edbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.edbar b{font-size:15px}
+.edbar .sp{flex:1}
+.edbar .fn{font-size:12px;color:var(--ink3);display:inline;margin:0}
+.dirty{font-size:12px;font-weight:700;color:var(--warn)}
+.edsum{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:10px;
+  background:#fff;overflow:hidden;margin-bottom:12px;position:sticky;top:0;z-index:3}
+.edsum>div{flex:1;min-width:140px;padding:9px 14px;border-left:1px solid var(--line)}
+.edsum>div:first-child{border-left:0}
+.edsum .l{font-size:11px;font-weight:800;color:var(--ink3)}
+.edsum .n{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.edsum .n small{font-size:11.5px;color:var(--ink3);font-weight:700}
+.edcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.edcard h3{margin:0 0 10px;font-size:13px;font-weight:800;color:var(--ink2)}
+.edmeta{display:flex;flex-wrap:wrap;gap:10px}
+.edmeta label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--ink3)}
+.edmeta label.g{flex:1;min-width:190px}
+input,select,textarea{font-family:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);
+  border-radius:7px;color:var(--ink);background:#fff;min-width:0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand)}
+.edcols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+@media(max-width:1100px){.edcols{grid-template-columns:1fr}}
+.edcol{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.edcol>.h{display:flex;align-items:center;gap:8px;padding:9px 14px;font-weight:800;font-size:13px;
+  border-bottom:1px solid var(--line)}
+.edcol.a>.h{background:#f5f7fa;color:var(--ink2)}
+.edcol.b>.h{background:var(--ai-soft);color:#166b4a}
+.edcol>.h .sp{flex:1}
+.edcol>.h .t{font-size:12px;font-weight:700;color:var(--ink3);font-variant-numeric:tabular-nums}
+.edrun{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:8px 14px;
+  background:#f7f9fc;border-bottom:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.edrun input{width:56px;text-align:right}
+.edrun select{width:76px}
+.edsteps{padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+.edstep{border:1px solid var(--line);border-radius:9px;padding:8px 10px;display:flex;gap:9px}
+.edstep.warn{border-color:#f0c4bf;background:#fffafa}
+.edstep .ord{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px}
+.edstep .ord .n{width:22px;height:22px;border-radius:6px;background:#eef2f7;color:var(--ink2);
+  font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.edstep .ord button{padding:0;width:22px;height:18px;font-size:10px;line-height:1;border-radius:5px}
+.edstep .th{flex:none;width:58px;height:44px;border-radius:6px;background:#eef2f7;
+  border:1px solid var(--line2);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.edstep .th img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.edstep .th span{font-size:9.5px;color:#aab6c2}
+.edstep .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.edstep .r{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.edstep .r .t{flex:1;min-width:120px;font-weight:600}
+.edstep .r .o{flex:1;min-width:110px;font-size:12px}
+.edstep textarea{width:100%;font-size:12px;color:var(--ink2);resize:vertical;min-height:30px}
+.edstep .calc{font-size:11.5px;font-weight:800;color:var(--ink2);white-space:nowrap;
+  background:#eef2f7;padding:3px 8px;border-radius:99px;font-variant-numeric:tabular-nums}
+.edstep .calc.na{background:var(--warn-soft);color:var(--warn)}
+.edstep .calc.zero{background:var(--ai-soft);color:#166b4a}
+.edstep select.k{width:74px;font-weight:700}
+.edstep select.k[data-v="manual"]{color:#a85a17;background:#fdf1e6;border-color:#f0cba6}
+.edstep select.k[data-v="ai"]{color:#1d7a4d;background:var(--ai-soft);border-color:#a9ddc4}
+.edstep select.k[data-v="system"]{color:#255a9b;background:#e9f1fc;border-color:#b3cdf0}
+.edstep select.a{width:74px}
+.edstep .num{width:58px;text-align:right}
+.edstep .u{width:66px}
+.edstep .x{padding:3px 7px;color:var(--ink3)}
+.edstep .x:hover{color:var(--warn);border-color:#f0c4bf}
+.ck{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;font-size:11.5px;
+  color:var(--ink3);padding:2px 7px;border:1px solid var(--line);border-radius:20px;background:#fff;user-select:none}
+.ck input{margin:0;width:12px;height:12px;min-width:0}
+.ck.on{color:var(--plan);border-color:#cfc4e2;background:var(--plan-soft);font-weight:700}
+.ck.ad.on{color:var(--addon);border-color:#efc0dc;background:var(--addon-soft)}
+.alt{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--addon);white-space:nowrap}
+.alt.off{display:none}
+.edadd{margin:2px 10px 10px;padding:7px;width:calc(100% - 20px);border-style:dashed;color:var(--ink3)}
+.lb{position:fixed;inset:0;background:rgba(16,26,36,.86);display:none;align-items:center;
+  justify-content:center;z-index:80;padding:24px;cursor:zoom-out}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:100%;border-radius:8px}
+
+/* ── 進度／提示 ── */
+.busy{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:60;
+  background:#1d2b38;color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;
+  box-shadow:0 6px 24px rgba(16,26,36,.28);display:none}
+.busy.on{display:block}
+.toast{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:70;
+  background:#1d2b38;color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;
+  box-shadow:0 6px 24px rgba(16,26,36,.28);opacity:0;pointer-events:none;transition:opacity .18s}
+.toast.on{opacity:1}
+.toast.bad{background:var(--warn)}
+@media(max-width:700px){ .bar h1{width:100%} main{padding:10px} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>SOP 總表</h1>
+  <span class="dir" id="dirName">還沒選資料夾</span>
+  <button class="pri" id="btnPick">選擇資料夾…</button>
+  <button id="btnResume" hidden>繼續上次的資料夾</button>
+  <button id="btnRescan" disabled>重新掃描</button>
+  <span class="sp"></span>
+  <span class="rate" title="和彙整試算表「設定 › 每分鐘人力成本」同一個值。改這裡只影響畫面上的金額，要寫回檔案請按「批次重新產生」">
+    單價 <input id="rate" type="number" min="0" step="any" value="5"> 元/分鐘
+  </span>
+  <span class="rate" title="新增產值的等效人工另訂單價，只影響「新增產能（等效）」。要寫回檔案請按「批次重新產生」">
+    等效 <input id="addonRate" type="number" min="0" step="any" value="10"> 元/分鐘
+  </span>
+  <button id="btnCsv" disabled>匯出總表 CSV</button>
+  <button id="btnRegen" disabled title="逐檔用編輯器開一次再存回：舊版檔會升成新格式，單價也會一起套用">批次重新產生</button>
+</div>
+
+<main><div class="wrap">
+
+  <div class="s3" id="stat" hidden></div>
+  <p class="note" id="note" hidden></p>
+
+  <div class="tabs" id="tabs" hidden>
+    <button class="on" data-t="list">總表</button>
+    <button data-t="iss">要處理的事 <span id="issN"></span></button>
+    <span class="sp"></span>
+    <label class="rate" title="同一條流程有好幾份時只算最新的那份。關掉才看得到被取代的舊檔"><input type="checkbox" id="only" checked> 只看最新</label>
+    <label class="rate"><input type="checkbox" id="grp" checked> 依部門分組</label>
+    <input class="q" id="q" placeholder="搜尋部門、題目、負責人、檔名">
+  </div>
+
+  <div class="card" id="view">
+    <div class="empty">
+      <b>選一個放 .sop.html 的資料夾</b>
+      這支面板會把資料夾裡（含子資料夾）所有交件檔讀進來，算出總表、找出要補的欄位，<br>
+      改完直接存回原檔 —— 不用一份一份匯入網頁再下載。
+      <div class="hint">
+        需要 Chrome 或 Edge（會用到資料夾讀寫權限）。<br>
+        檔案完全留在你自己的電腦，不會上傳到任何地方。<br>
+        Chrome 擋系統資料夾（桌面、家目錄、Program Files），放在專案夾底下就沒問題。
+      </div>
+    </div>
+  </div>
+
+</div></main>
+
+<!-- 這個遮罩只給「批次重新產生」用。編輯是在頁面裡直接做的，不會離開總表。
+     裡面的 iframe 是拿來借用 SOP 工具組重產檔案外殼，跑的時候不需要人操作。 -->
+<div class="ov" id="ov">
+  <div class="ohead">
+    <b id="ovTitle">批次重新產生</b>
+    <span class="dim" id="ovFile"></span>
+    <span class="sp"></span>
+    <button id="ovClose">停止</button>
+  </div>
+  <iframe id="ovFrame" title="SOP 工具組"></iframe>
+</div>
+
+<datalist id="deptList"></datalist>
+<div class="lb" id="lb"><img id="lbImg" alt=""></div>
+<div class="busy" id="busy"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   SOP 總表 ── 讀一個資料夾裡的全部 .sop.html，算總表、找問題、就地編輯。
+
+   分三塊：
+     CALC  工時與金額。**公式必須和「SOP 工具組.html」一字不差**，
+           那邊有 filler（填表器）與 VIEWER（匯出檔）各一份，這裡是第三份。
+           三處要同步；`scripts/工時計算檢查.js` 會同時對填表器與這裡跑斷言。
+     FS    資料夾掃描與讀寫（File System Access API）。
+     UI    總表、問題清單、iframe 編輯。
+
+   為什麼不共用一份原始碼：這兩支都要維持「點了就能用」的單檔 HTML，
+   不能有建置步驟。編輯器與標註器太大，所以走 iframe + postMessage 借用；
+   計算只有幾十行，抄一份加測試比拆成模組划算。
+   ══════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+/* ────────────────────────────── CALC ────────────────────────────── */
+const CALC = (() => {
+  const UN = { sec:1, min:60, hr:3600 };
+  const DFT = { daysPerMonth:20.8, weeksPerMonth:4.33, ratePerMinute:5, addonRatePerMinute:10, paidKinds:['manual'] };
+
+  const cfg = d => {
+    const c = (d && d.config) || {};
+    return {
+      D: Number(c.daysPerMonth)  > 0 ? Number(c.daysPerMonth)  : DFT.daysPerMonth,
+      W: Number(c.weeksPerMonth) > 0 ? Number(c.weeksPerMonth) : DFT.weeksPerMonth,
+      rate: Number(c.ratePerMinute) > 0 ? Number(c.ratePerMinute) : DFT.ratePerMinute,
+      addonRate: Number(c.addonRatePerMinute) > 0 ? Number(c.addonRatePerMinute) : DFT.addonRatePerMinute,
+      paid: (c.paidKinds && c.paidKinds.length) ? c.paidKinds : DFT.paidKinds
+    };
+  };
+  const pm = d => { const c = cfg(d);
+    return { day:c.D, week:c.W, month:1, quarter:1/3, year:1/12 }; };
+
+  /* 頻率、次數、人數是「整條流程」的屬性，現況與 AI 後各一組。
+     舊檔沒有 aft* 就沿用現況 —— 跟填表器 RUN() 同一套。 */
+  function run(d, l){
+    const p = (a,b) => (a == null || a === '') ? b : a;
+    if (l !== 'aft') return { every:d.runEvery, freq:d.runFreq, hc:d.runHc, vol:d.volume };
+    return { every:p(d.aftEvery, d.runEvery), freq:p(d.aftFreq, d.runFreq),
+             hc:p(d.aftHc, d.runHc), vol:p(d.aftVolume, d.volume) };
+  }
+  const ev  = (d,l) => { const v = Number(run(d,l).every); return v > 0 ? v : 1; };
+  const hc  = (d,l) => { const v = Number(run(d,l).hc);    return v > 0 ? v : 1; };
+  const vol = (d,l) => { const v = Number(run(d,l).vol);   return v > 0 ? v : 1; };
+  const fq  = (d,l) => run(d,l).freq || 'day';
+  const occ = (d,l) => fq(d,l) === 'none' ? 0 : (pm(d)[fq(d,l)] || 0) / ev(d,l);
+
+  /* ── 舊檔怎麼讀 ──────────────────────────────────────────────
+     「多久做一次、幾份、幾個人」在不同年份的檔案裡擺在不同地方，而且
+     `qty`（份數）的意思前後改過三次。目前野生檔案至少三種寫法：
+
+       flow      現行寫法。次數在流程層的 volume，qty 純敘述、不進工時。
+       qtyFlow   2026-08 前後的過渡檔。volume 是 1，真正的件數擺在每一步的 qty，
+                 頻率與人數還是看流程層。
+       stepSelf  更早的寫法。沒有流程層的 runFreq，每一步自己帶 freq／every／hc／qty。
+
+     猜錯的代價很大：同一份範例檔用錯寫法，AI 導入後那一側會從 3.2 人時
+     變成 2013 人時，差 628 倍，總表上就是一條看起來「導入後反而更慢」的流程。
+
+     所以不猜 —— 每一份檔案都自己存了一份 summary，那就是它當初的意思。
+     三種寫法各算一次，哪一種對得上它自己的 summary 就用哪一種；
+     三種都對不上才退回預設值，並在「要處理的事」裡明講不要用這份的數字。
+     v4 以後只有一種寫法，直接用 flow，不必試。 */
+  const CURRENT_SCHEMA = 'sop-timesheet/4';
+
+  function factorsIn(mode, d, st, l){
+    if (mode === 'flow')    return { vol: vol(d,l), hc: hc(d,l), occ: occ(d,l),
+                                     freq: fq(d,l), every: ev(d,l) };
+    if (mode === 'qtyFlow') return { vol: Number(st.qty) > 0 ? Number(st.qty) : 1,
+                                     hc: hc(d,l), occ: occ(d,l),
+                                     freq: fq(d,l), every: ev(d,l) };
+    const q  = Number(st.qty)   > 0 ? Number(st.qty)   : 1;   // stepSelf
+    const e  = Number(st.every) > 0 ? Number(st.every) : 1;
+    const h  = Number(st.hc)    > 0 ? Number(st.hc)    : 1;
+    const fr = st.freq || 'day';
+    return { vol:q, hc:h, occ: fr === 'none' ? 0 : (pm(d)[fr] || pm(d).day) / e,
+             freq: fr, every: e };
+  }
+  function hoursIn(mode, d, st, l){
+    if (st.dur == null || st.dur === '') return null;
+    const f = factorsIn(mode, d, st, l);
+    return Number(st.dur) * (UN[st.unit] || 60) * f.vol * f.hc * f.occ / 3600;
+  }
+  function totalIn(mode, d, l){
+    return (d[l] || []).reduce((t, st) => {
+      const h = hoursIn(mode, d, st, l); return t + (h == null ? 0 : h); }, 0);
+  }
+
+  /* 結果記在 d.__read 上，一份檔案只判一次。__read 是我們加的，不會寫回檔案。 */
+  function reading(d){
+    if (d.__read) return d.__read;
+    const fallback = d.runFreq ? 'flow' : 'stepSelf';
+    let out = { mode: fallback, matched: false, checked: false };
+    if (d.schema === CURRENT_SCHEMA){
+      out = { mode:'flow', matched:true, checked:false };
+    } else if (d.summary && isFinite(d.summary.nowTotal) && isFinite(d.summary.aftTotal)){
+      const near = (a, b) => Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.01);
+      const hit = ['flow', 'qtyFlow', 'stepSelf'].find(m =>
+        near(totalIn(m, d, 'now'), d.summary.nowTotal) &&
+        near(totalIn(m, d, 'aft'), d.summary.aftTotal));
+      out = { mode: hit || fallback, matched: !!hit, checked: true };
+    }
+    d.__read = out;
+    return out;
+  }
+  const factors = (d, st, l) => factorsIn(reading(d).mode, d, st, l);
+
+  /* ── 把舊寫法轉成現行寫法，且**工時一分不差** ──────────────────
+     為什麼一定要轉：編輯器（SOP 工具組.html）只認現行寫法，它自己的
+     舊檔遷移會把現況那側的「每次 176 份」整條沿用到 AI 導入後那一側。
+     直接把舊檔丟給它編輯再存回去，等於把錯的數字寫進原檔 —— 資料就毀了。
+     所以總表在送進 iframe 之前先轉好，編輯器拿到的一律是乾淨的現行寫法。
+
+     怎麼轉：現行寫法每一側只有一組「多久一輪、幾次、幾個人」，但舊檔可以
+     一步一個節奏（例如四步每天、一步每週）。取眾數當流程層的值之後，
+     跟眾數不同的那幾步就把「每次多久」**換算成同一個節奏下的等值時間**，
+     這樣每一步的月人時都保持原樣，總計也就不會動。
+     被換算過的步驟會列在 rescaled 裡，UI 要提醒使用者覆核。 */
+  function toFlow(d){
+    const rd = reading(d);
+    if (rd.mode === 'flow') return { doc:d, changed:false, rescaled:[] };
+
+    const out = JSON.parse(JSON.stringify(d));
+    delete out.__read;
+    const rescaled = [];
+    const side = { now:'', aft:'' };
+
+    ['now', 'aft'].forEach(l => {
+      const steps = out[l] || [];
+      if (!steps.length) return;
+      const fs  = steps.map((st, i) => factorsIn(rd.mode, d, d[l][i], l));
+      const hrs = steps.map((st, i) => hoursIn(rd.mode, d, d[l][i], l));
+
+      // 眾數：同一個值出現最多次的就當這一側的流程層設定
+      const modeOf = key => {
+        const c = new Map();
+        fs.forEach(f => c.set(f[key], (c.get(f[key]) || 0) + 1));
+        let best = fs[0][key], bn = -1;
+        c.forEach((n, v) => { if (n > bn){ bn = n; best = v; } });
+        return best;
+      };
+      const V = Number(modeOf('vol'))   > 0 ? Number(modeOf('vol'))   : 1;
+      const H = Number(modeOf('hc'))    > 0 ? Number(modeOf('hc'))    : 1;
+      const E = Number(modeOf('every')) > 0 ? Number(modeOf('every')) : 1;
+      const F = modeOf('freq') || 'day';
+      const O = F === 'none' ? 0 : (pm(out)[F] || pm(out).day) / E;
+      side[l] = { V:V, H:H, E:E, F:F };
+
+      steps.forEach((st, i) => {
+        // 步驟層的節奏欄位在現行寫法已經沒有意義，留著只會誤導
+        delete st.freq; delete st.every; delete st.hc;
+        st.qty = V;                       // 現行寫法的份數是敘述用的
+        if (hrs[i] == null) return;
+        if (O <= 0){ st.dur = 0; st.unit = 'sec'; return; }
+        const secs = hrs[i] * 3600 / (V * H * O);
+        const before = Number(st.dur) * (UN[st.unit] || 60);
+        if (Math.abs(secs - before) > Math.max(0.001, before * 0.001))
+          rescaled.push({ list:l, i:i, title:st.title || '（未命名）',
+                          from:before, to:secs });
+        // 秒數大就換成分鐘／小時，免得欄位出現 1800 這種看不懂的數字
+        if (secs >= 3600 && Math.abs(secs % 3600) < 0.5){ st.dur = secs / 3600; st.unit = 'hr'; }
+        else if (secs >= 60 && Math.abs(secs % 60) < 0.5){ st.dur = secs / 60; st.unit = 'min'; }
+        else { st.dur = Math.round(secs * 1000) / 1000; st.unit = 'sec'; }
+      });
+    });
+
+    const N = side.now || { V:1, H:1, E:1, F:'day' };
+    const A = side.aft || N;
+    out.volume   = N.V; out.runEvery = N.E; out.runFreq = N.F; out.runHc = N.H;
+    out.volEvery = 1;   out.volumePer = N.F;
+    /* AI 後那組一律寫實，不留空 —— 留空代表「沿用現況」，
+       但舊檔兩側的量常常本來就不一樣，沿用就是把錯誤帶回去 */
+    out.aftVolume = A.V; out.aftEvery = A.E; out.aftFreq = A.F; out.aftHc = A.H;
+    return { doc:out, changed:true, rescaled:rescaled, from:rd.mode };
+  }
+
+  function mh(d, st, l){
+    if (st.dur == null || st.dur === '') return null;
+    const f = factors(d, st, l);
+    return Number(st.dur) * (UN[st.unit] || 60) * f.vol * f.hc * f.occ / 3600;
+  }
+  /* 新增產值的等效人工：同一件事若改由人做要多久（只有 v4 以後才會有） */
+  function altH(d, st, l){
+    if (st.altDur == null || st.altDur === '') return null;
+    const f = factors(d, st, l);
+    return Number(st.altDur) * (UN[st.altUnit] || 60) * f.vol * f.hc * f.occ / 3600;
+  }
+  const paidOf = (d, k) => cfg(d).paid.indexOf(k) >= 0;
+
+  /* 四個口徑，彼此獨立、不可互相加總：
+       manual 只有人工、且排除預規劃 —— 真正要付錢的就這個
+       wall   含 AI 的實際耗時，只給佔比當分母
+       addon  新增產值的等效人工，不是省下的工時
+       plan   預規劃，儲備用，不進任何總計 */
+  function roll(d, l){
+    const o = { manual:0, wall:0, addon:0, plan:0, complete:true,
+                steps:0, aiSteps:0, planSteps:0, addonSteps:0 };
+    (d[l] || []).forEach(st => {
+      o.steps++;
+      const m = mh(d, st, l);
+      if (m == null) o.complete = false;
+      else if (st.plan){ if (paidOf(d, st.kind)) o.plan += m; }
+      else { o.wall += m; if (paidOf(d, st.kind)) o.manual += m; }
+      if (st.plan) o.planSteps++;
+      else {
+        if (!paidOf(d, st.kind)) o.aiSteps++;
+        if (st.addon){ o.addonSteps++; const a = altH(d, st, l); if (a != null) o.addon += a; }
+      }
+    });
+    return o;
+  }
+  return { cfg, roll, mh, altH, paidOf, run, fq, ev, hc, vol, reading, toFlow };
+})();
+
+/* ────────────────────────────── 狀態 ────────────────────────────── */
+let DIR = null;          // 使用者選的資料夾 handle
+let ROWS = [];           // 每個 .sop.html 一筆
+let SORT = { k:'save', dir:-1 };
+let TAB = 'list';
+let RATE = 5;            // 畫面上換算金額用的單價（不改檔案）
+let ADDON_RATE = 10;     // 新增產值「等效人工」另訂的單價，只用在新增產能那一格
+
+const SCHEMAS = ['sop-timesheet/4','sop-timesheet/3','sop-timesheet/2','sop-timesheet/1'];
+const CURRENT = 'sop-timesheet/4';
+
+/* 公司通訊錄上的部門寫法。跟 SOP 工具組 CFG.depts 同一份 ——
+   01 的匯入是以「部門＋流程題目」當 key，部門多一個「部」字就會被當成另一條流程，
+   效益也就重複計算一次。 */
+const DEPTS = ['行銷','銷售','力科','人資','採一','採二','業管','物料','品保','生管','生技',
+               '電機','製一','製二','開發一','開發二','總管理處','資訊','董事長室','海外','財務','總務'];
+/* 這幾個對不上「去掉部／課／處／室」的規則，只能明列 */
+const DEPT_ALIAS = { '品質保證':'品保', '品質保證部':'品保', '品管':'品保' };
+/* 只用來分組與提醒，不會偷改檔案內容 —— 要改請開編輯器改，那才留得住紀錄 */
+function normDept(v){
+  const t = String(v || '').trim();
+  if (!t) return '';
+  if (DEPTS.indexOf(t) >= 0) return t;
+  if (DEPT_ALIAS[t]) return DEPT_ALIAS[t];
+  const cut = t.replace(/[部課處室組]$/, '');
+  if (DEPTS.indexOf(cut) >= 0) return cut;
+  if (DEPT_ALIAS[cut]) return DEPT_ALIAS[cut];
+  return t;
+}
+const normTitle = v => String(v || '').trim().replace(/\s+/g, ' ');
+const flowKey = r => normDept(r.dept) + '\u241F' + normTitle(r.title);
+
+/* ────────────────────────────── 小工具 ────────────────────────────── */
+let toastT = null;
+function toast(t, bad){
+  const el = $('toast');
+  el.textContent = t; el.className = 'toast on' + (bad ? ' bad' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => el.className = 'toast', 2600);
+}
+function busy(on, t){ const el = $('busy'); el.textContent = t || ''; el.className = 'busy' + (on ? ' on' : ''); }
+
+const NT  = v => v == null ? '—' : Math.round(v).toLocaleString('en-US');
+const num = v => v == null ? '—' : v >= 100 ? Math.round(v).toLocaleString()
+          : v >= 10 ? v.toFixed(1) : (v > 0 && v < 0.01 ? '<0.01' : v.toFixed(2));
+const money = h => h == null ? null : h * 60 * RATE;   // 月人時 → 元／月
+const addonMoney = h => h == null ? null : h * 60 * ADDON_RATE;   // 等效人時 → 元／月（另訂單價）
+
+/* ── 記住上次選的資料夾 ────────────────────────────────────────
+   資料夾 handle 可以存進 IndexedDB，下次開頁面撈回來就不必再翻一次目錄。
+   權限不會跟著存 —— 瀏覽器規定要有使用者手勢才能重新授權，
+   所以是給一顆「繼續上次的資料夾」按鈕，不是偷偷自動打開。
+   file:// 下 IndexedDB 不一定能用，整段包 try，不能用就退回每次自己選。 */
+const DB_NAME = 'sop-hub', DB_KEY = 'lastDir';
+function idb(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('h');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function rememberDir(h){
+  try { const db = await idb(); db.transaction('h', 'readwrite').objectStore('h').put(h, DB_KEY); }
+  catch(e){ /* 存不起來就算了，不影響本次使用 */ }
+}
+async function lastDir(){
+  try {
+    const db = await idb();
+    return await new Promise(res => {
+      const q = db.transaction('h', 'readonly').objectStore('h').get(DB_KEY);
+      q.onsuccess = () => res(q.result || null);
+      q.onerror = () => res(null);
+    });
+  } catch(e){ return null; }
+}
+
+/* ────────────────────────────── 掃描與解析 ────────────────────────────── */
+const RE_DATA = /<script type="application\/json" id="sop-data">([\s\S]*?)<\/script>/;
+
+/* 收件匣裡的檔名什麼樣子都有：`.sop (2).html`、`sop(1).html`、`…sop.html.old-勿匯入.html`、
+   甚至整個沒有 sop 兩個字的「設變單自動化效益.html」。用副檔名比對會漏掉一半，
+   所以改成掃所有 .html，再用「裡面有沒有 sop-data」來認。 */
+async function* walk(dir, path){
+  for await (const h of dir.values()){
+    const p = path ? path + '/' + h.name : h.name;
+    if (h.kind === 'directory'){ yield* walk(h, p); }
+    else if (/\.html?$/i.test(h.name)) yield { handle:h, path:p, parent:dir };
+  }
+}
+
+function parse(text){
+  const m = text.match(RE_DATA);
+  if (!m) return { err:'這個檔案裡找不到 SOP 資料（可能是 2026-08 以前匯出的舊版）' };
+  let d;
+  try { d = JSON.parse(m[1]); } catch(e){ return { err:'資料解析失敗：' + e.message }; }
+  if (SCHEMAS.indexOf(d.schema) < 0) return { err:'格式版本不認得：' + (d.schema || '（沒寫）') };
+  return { d };
+}
+
+function build(file, text){
+  const r = parse(text);
+  const row = { path:file.path, name:file.handle.name, handle:file.handle, parent:file.parent,
+                size:text.length, issues:[] };
+  if (r.err){ row.err = r.err; row.dept = '（讀不到）'; row.title = file.handle.name; return row; }
+
+  const d = r.d;                      // 舊檔原樣留著，CALC 會照它的語意算
+  row.d = d;
+  row.dept   = d.dept || '（未填部門）';
+  row.title  = d.title || '（未填題目）';
+  row.deptOk = !d.dept || DEPTS.indexOf(String(d.dept).trim()) >= 0;
+  row.deptAs = normDept(d.dept);
+  row.author = d.author || '';
+  row.old    = d.schema !== CURRENT;
+  row.exported = (d.exportedAt || '').slice(0, 10);
+
+  const rn = CALC.roll(d, 'now'), ra = CALC.roll(d, 'aft');
+  row.rn = rn; row.ra = ra;
+  row.nowH = rn.manual; row.aftH = ra.manual;
+  row.saveH  = (rn.steps && ra.steps) ? rn.manual - ra.manual : null;
+  row.pct    = (rn.manual > 0 && ra.steps) ? (rn.manual - ra.manual) / rn.manual * 100 : null;
+  row.addonH = ra.addon;
+  row.planH  = rn.plan + ra.plan;
+  row.steps  = rn.steps + ra.steps;
+
+  /* 要處理的事。ng 會擋掉可信度，wr 只是提醒 */
+  const push = (lv, t, dsc) => row.issues.push({ lv, t, d:dsc });
+  if (!d.dept || !d.title) push('ng', '部門或流程題目沒填', '面板要靠這兩欄辨識這條流程');
+  else if (!row.deptOk) push('wr', '部門寫「' + d.dept + '」，通訊錄上是「' + row.deptAs + '」',
+    '01 的匯入以「部門＋流程題目」當 key，多一個字就會被當成另一條流程、效益重複算一次。'
+    + '總表已經先幫你併在一起，但請開編輯器把部門改成通訊錄的寫法');
+  if (!rn.steps) push('ng', '現況流程沒有步驟', '');
+  if (!ra.steps) push('ng', 'AI 導入後流程沒有步驟', '沒有這一版就算不出效益');
+  if (!rn.complete || !ra.complete) push('ng', '有步驟算不出工時', '缺「每次多久」或頻率填成不定期');
+
+  const noAlt = (d.aft || []).filter(x => !x.plan && x.addon && (x.altDur == null || x.altDur === ''));
+  if (noAlt.length) push('ng', noAlt.length + ' 個「新增產值」步驟沒填等效人工時間',
+    '沒有這個時間就算不出附加產值');
+
+  const noName = (d.now || []).concat(d.aft || []).filter(x => !String(x.title || '').trim());
+  if (noName.length) push('ng', noName.length + ' 個步驟沒有名稱', '');
+
+  if (row.old) push('wr', '舊版格式（' + (d.schema || '?') + '）',
+    '數字已用新口徑重算；用「批次重新產生」可以把檔案本身升成 ' + CURRENT);
+
+  /* 對帳結果。matched 代表有一種讀法對得上檔案自己存的 summary，數字可信；
+     checked 但沒 matched 代表三種讀法都對不上 —— 大聲講，不要默默給錯的數字。 */
+  const rd = CALC.reading(d);
+  row.mode = rd.mode; row.matched = rd.matched;
+  if (rd.checked && !rd.matched){
+    push('ng', '工時和檔案自己存的數字對不起來',
+      '檔案寫現況 ' + Number(d.summary.nowTotal).toFixed(2) + '、AI 後 '
+      + Number(d.summary.aftTotal).toFixed(2) + ' 人時/月，這裡三種讀法都算不出同樣的值。'
+      + '先別用這份的數字，請用編輯器開起來確認「處理量」與各步驟的「共 N 件」');
+  } else if (rd.checked && rd.matched && rd.mode !== 'flow'){
+    push('wr', '用舊寫法讀的（' + rd.mode + '）',
+      '數字已跟檔案自己存的 summary 對過帳。「批次重新產生」可以把它轉成現行寫法');
+  }
+  if (rn.planSteps + ra.planSteps)
+    push('wr', (rn.planSteps + ra.planSteps) + ' 個步驟標為預規劃', '不進效益總計，只累計成儲備');
+  if (ra.steps && !(d.aft || []).some(x => x.act === 'maint'))
+    push('wr', 'AI 導入後沒有任何「維護」步驟', '規則要調、對照表要更新，漏填就是高估效益');
+  const noFlow = (d.now || []).concat(d.aft || [])
+    .filter(x => !String(x.obj || '').trim() || !String(x.iface || '').trim());
+  if (noFlow.length) push('wr', noFlow.length + ' 個步驟沒填「檔案／任務」或「介面」',
+    '兩格填齊，面板才知道 AI 要接哪些檔案與系統');
+
+  row.ng = row.issues.filter(x => x.lv === 'ng').length;
+  row.wr = row.issues.filter(x => x.lv === 'wr').length;
+  return row;
+}
+
+async function scan(){
+  if (!DIR) return;
+  busy(true, '掃描資料夾…');
+  const rows = [];
+  try {
+    for await (const f of walk(DIR, '')){
+      let text = '', mtime = 0;
+      try { const fo = await f.handle.getFile(); mtime = fo.lastModified || 0; text = await fo.text(); }
+      catch(e){ rows.push({ path:f.path, name:f.handle.name, handle:f.handle, parent:f.parent,
+                            err:'讀不到檔案：' + e.message, dept:'（讀不到）', title:f.handle.name,
+                            issues:[], ng:1, wr:0 }); continue; }
+      if (!RE_DATA.test(text)) continue;   // 不是交件檔，安靜跳過
+      const row = build(f, text); row.mtime = mtime;
+      rows.push(row);
+      busy(true, '掃描資料夾… 已讀 ' + rows.length + ' 份');
+    }
+  } catch(e){ busy(false); return toast('掃描失敗：' + (e && e.message || e), true); }
+  busy(false);
+  ROWS = markDupes(rows);
+  render();
+  toast(rows.length ? '讀到 ' + rows.length + ' 份交件檔' : '這個資料夾裡沒有 .sop.html');
+}
+
+/* ── 同一條流程有好幾份時，只有最新的算數 ────────────────────────
+   收件匣是「丟進去就留著」，同一條流程改一次就多一個檔，檔名還千奇百怪
+   （`.sop (2).html`、`sop-20260915.html`、`sop.html.old-勿匯入.html`）。
+   全部加總等於把同一條流程的效益算好幾次，數字會虛胖。
+
+   誰是最新：看檔案裡的 `exportedAt`，**不是看檔案的建立日期** ——
+   從 Drive 抓下來的檔案，建立日期全是「抓下來的那一刻」，完全分不出先後。
+   真的沒有 exportedAt 才退回檔案的修改時間。 */
+function markDupes(rows){
+  const by = new Map();
+  rows.forEach(r => {
+    if (r.err) return;
+    const k = flowKey(r);
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(r);
+  });
+  by.forEach(list => {
+    list.sort((a, b) => String(b.exportedAt || '').localeCompare(String(a.exportedAt || ''))
+                     || (b.mtime || 0) - (a.mtime || 0));
+    list.forEach((r, i) => {
+      r.dupN = list.length;
+      r.latest = i === 0;
+      if (i > 0){
+        r.supersededBy = list[0].path;
+        r.issues.unshift({ lv:'ng', t:'同一條流程有 ' + list.length + ' 份，這份不是最新的',
+          d:'最新的是「' + list[0].path + '」（匯出於 '
+            + (list[0].exportedAt || '不明') + '）。這份不列入合計，確認後請移走' });
+        r.ng = r.issues.filter(x => x.lv === 'ng').length;
+      }
+    });
+  });
+  return rows;
+}
+
+/* ────────────────────────────── 渲染 ────────────────────────────── */
+const COLS = [
+  { k:'dept',   l:'部門',        w:'' },
+  { k:'title',  l:'流程題目',    w:'' },
+  { k:'author', l:'負責人',      w:'' },
+  { k:'nowH',   l:'現況人工',    n:1 },
+  { k:'aftH',   l:'AI後人工',    n:1 },
+  { k:'pct',    l:'淨改善',      n:1 },
+  { k:'save',   l:'實省 元/月',  n:1 },
+  { k:'addon',  l:'新增產能 元/月', n:1 },
+  { k:'plan',   l:'儲備 元/月',  n:1 },
+  { k:'steps',  l:'步數',        n:1 },
+  { k:'state',  l:'狀態',        nos:1 }
+];
+const valOf = (r, k) =>
+  k === 'save'  ? (r.saveH  == null ? null : money(r.saveH))  :
+  k === 'addon' ? (r.addonH == null ? null : addonMoney(r.addonH)) :
+  k === 'plan'  ? (r.planH  == null ? null : money(r.planH))  :
+  r[k];
+
+function filtered(){
+  const q = $('q').value.trim().toLowerCase();
+  let rs = ROWS.slice();
+  /* 被取代的舊檔預設不看 —— 全部加總等於把同一條流程的效益算好幾次 */
+  if ($('only').checked) rs = rs.filter(r => r.err || r.latest !== false);
+  if (q) rs = rs.filter(r => [r.dept, r.title, r.author, r.name]
+    .some(v => String(v || '').toLowerCase().indexOf(q) >= 0));
+  const k = SORT.k, dir = SORT.dir;
+  rs.sort((a, b) => {
+    const x = valOf(a, k), y = valOf(b, k);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;           // 算不出來的一律沉底，不管升冪降冪
+    if (y == null) return -1;
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+    return String(x).localeCompare(String(y), 'zh-Hant') * dir;
+  });
+  return rs;
+}
+
+function stateCell(r){
+  if (r.err) return '<span class="pill ng">讀不到</span>';
+  const out = [];
+  if (r.latest === false) out.push('<span class="pill ng">舊檔 · 已被取代</span>');
+  else if (r.dupN > 1) out.push('<span class="pill ok">最新 · 共 ' + r.dupN + ' 份</span>');
+  if (!r.deptOk) out.push('<span class="pill wr">部門寫法</span>');
+  if (r.ng) out.push('<span class="pill ng">' + r.ng + ' 項要補</span>');
+  else if (r.wr) out.push('<span class="pill wr">' + r.wr + ' 項提醒</span>');
+  else out.push('<span class="pill ok">完整</span>');
+  if (r.old) out.push('<span class="pill old">舊版</span>');
+  if (r.ra && r.ra.addonSteps) out.push('<span class="pill ad">產值 ' + r.ra.addonSteps + '</span>');
+  return out.join(' ');
+}
+
+function rowHTML(r){
+  if (r.err){
+    return '<tr data-p="' + esc(r.path) + '"><td colspan="3"><span class="ttl">' + esc(r.title) + '</span>'
+      + '<span class="fn">' + esc(r.path) + '</span></td>'
+      + '<td colspan="7" class="dim">' + esc(r.err) + '</td>'
+      + '<td>' + stateCell(r) + '</td></tr>';
+  }
+  const sv = valOf(r, 'save'), ad = valOf(r, 'addon'), pl = valOf(r, 'plan');
+  return '<tr class="' + (r.latest === false ? 'dup' : '') + '" data-p="' + esc(r.path) + '">'
+    + '<td>' + esc(r.dept) + '</td>'
+    + '<td><span class="ttl">' + esc(r.title) + '</span><span class="fn" title="' + esc(r.path) + '">'
+      + esc(r.path) + '</span></td>'
+    + '<td>' + esc(r.author || '—') + '</td>'
+    + '<td class="num">' + num(r.nowH) + '</td>'
+    + '<td class="num">' + num(r.aftH) + '</td>'
+    + '<td class="num' + (r.pct > 0 ? ' good' : '') + '">' + (r.pct == null ? '—' : r.pct.toFixed(0) + '%') + '</td>'
+    + '<td class="num' + (sv > 0 ? ' good' : '') + '">' + NT(sv) + '</td>'
+    + '<td class="num">' + (ad > 0 ? NT(ad) : '<span class="dim">—</span>') + '</td>'
+    + '<td class="num">' + (pl > 0 ? NT(pl) : '<span class="dim">—</span>') + '</td>'
+    + '<td class="num">' + r.steps + '</td>'
+    + '<td>' + stateCell(r) + '</td></tr>';
+}
+
+function sumRow(label, rs, cls){
+  const s = { nowH:0, aftH:0, save:0, addon:0, plan:0, steps:0 };
+  rs.forEach(r => { if (r.err || r.latest === false) return;   // 舊檔不進小計
+    s.nowH += r.nowH || 0; s.aftH += r.aftH || 0;
+    s.save += valOf(r, 'save') || 0; s.addon += valOf(r, 'addon') || 0;
+    s.plan += valOf(r, 'plan') || 0; s.steps += r.steps || 0; });
+  const pct = s.nowH > 0 ? (s.nowH - s.aftH) / s.nowH * 100 : null;
+  return '<tr class="' + cls + '"><td colspan="3">' + esc(label) + '　<span class="dim">'
+    + rs.length + ' 份</span></td>'
+    + '<td class="num">' + num(s.nowH) + '</td><td class="num">' + num(s.aftH) + '</td>'
+    + '<td class="num">' + (pct == null ? '—' : pct.toFixed(0) + '%') + '</td>'
+    + '<td class="num">' + NT(s.save) + '</td><td class="num">' + (s.addon ? NT(s.addon) : '—') + '</td>'
+    + '<td class="num">' + (s.plan ? NT(s.plan) : '—') + '</td>'
+    + '<td class="num">' + s.steps + '</td><td></td></tr>';
+}
+
+function renderList(){
+  const rs = filtered();
+  if (!rs.length) return '<div class="empty"><b>沒有符合的流程</b>換個關鍵字，或按「重新掃描」</div>';
+  const head = '<tr>' + COLS.map(c =>
+    '<th class="' + (c.n ? 'num ' : '') + (c.nos ? 'nos' : '') + '"'
+    + (c.nos ? '' : ' data-k="' + c.k + '"') + '>' + c.l
+    + (SORT.k === c.k ? ' <span class="ar">' + (SORT.dir > 0 ? '▲' : '▼') + '</span>' : '')
+    + '</th>').join('') + '</tr>';
+
+  let body = '';
+  if ($('grp').checked){
+    const by = {};
+    rs.forEach(r => { (by[r.dept] = by[r.dept] || []).push(r); });
+    Object.keys(by).sort((a, b) => a.localeCompare(b, 'zh-Hant')).forEach(dep => {
+      body += sumRow(dep, by[dep], 'grp') + by[dep].map(rowHTML).join('');
+    });
+  } else {
+    body = rs.map(rowHTML).join('');
+  }
+  body += sumRow('全部合計', rs, 'tot');
+  return '<div class="tw"><table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+}
+
+function renderIssues(){
+  const rs = filtered().filter(r => r.issues.length || r.err);
+  if (!rs.length) return '<div class="empty"><b>沒有要處理的事</b>所有交件檔都填齊了</div>';
+  let h = '<div class="iss">';
+  rs.forEach(r => {
+    const list = r.err ? [{ lv:'ng', t:r.err, d:'' }] : r.issues;
+    list.forEach(it => {
+      h += '<div class="row" data-p="' + esc(r.path) + '">'
+        + '<span class="pill ' + it.lv + '">' + (it.lv === 'ng' ? '要補' : '提醒') + '</span>'
+        + '<div class="w"><div class="t">' + esc(it.t) + '</div>'
+        + '<div class="d">' + esc(r.dept) + '　·　' + esc(r.title)
+        + (it.d ? '　·　' + esc(it.d) : '') + '</div></div>'
+        + '<button data-edit="' + esc(r.path) + '">編輯</button></div>';
+    });
+  });
+  return h + '</div>';
+}
+
+function render(){
+  /* 編輯是同一頁換一塊內容，不是另一頁 —— 回總表時捲軸、搜尋、資料夾權限都還在 */
+  if (VIEW === 'edit' && EDDOC){
+    $('tabs').hidden = true; $('stat').hidden = true; $('note').hidden = true;
+    $('view').className = '';
+    $('view').innerHTML = renderEdit();
+    document.querySelectorAll('.edstep textarea').forEach(grow);
+    return;
+  }
+  $('view').className = 'card';
+
+  const has = ROWS.length > 0;
+  $('tabs').hidden = !has; $('stat').hidden = !has; $('note').hidden = !has;
+  $('btnCsv').disabled = !has; $('btnRegen').disabled = !has;
+
+  if (!has){
+    $('view').innerHTML = '<div class="empty"><b>這個資料夾裡沒有 .sop.html</b>'
+      + '選別的資料夾，或先用「SOP 工具組」匯出幾份交件檔<div class="hint">'
+      + '子資料夾也會一起掃。</div></div>';
+    return;
+  }
+
+  /* 合計一律只算最新的那份，不受「只看最新」開關影響 —— 開關只管畫面要不要顯示 */
+  const ok = ROWS.filter(r => !r.err && r.latest !== false);
+  const T = { save:0, addon:0, plan:0, now:0, aft:0 };
+  ok.forEach(r => {
+    T.save  += valOf(r, 'save')  || 0;
+    T.addon += valOf(r, 'addon') || 0;
+    T.plan  += valOf(r, 'plan')  || 0;
+    T.now += r.nowH || 0; T.aft += r.aftH || 0;
+  });
+  const done = ok.filter(r => !r.ng).length;
+  const dup = ROWS.filter(r => r.latest === false).length;
+
+  /* 三個金額各自獨立、不加總。回本與 ROI 只能吃第一格，因為只有它是現金。 */
+  $('stat').innerHTML =
+    '<div class="b1"><div class="l">實省人力</div><div class="n">' + NT(T.save * 12)
+      + ' <small>元/年</small></div><div class="s">每月 ' + NT(T.save) + ' 元　·　'
+      + num(T.now) + ' → ' + num(T.aft) + ' 人時/月</div></div>'
+  + '<div class="b2"><div class="l">新增產能（等效）</div><div class="n">'
+      + (T.addon ? NT(T.addon * 12) : '—') + ' <small>元/年</small></div>'
+      + '<div class="s">' + (T.addon ? '原本沒做、AI 才多出來的事　·　不是省下的現金'
+                                     : '沒有標「新增產值」的步驟') + '</div></div>'
+  + '<div class="b3"><div class="l">儲備中</div><div class="n">'
+      + (T.plan ? NT(T.plan * 12) : '—') + ' <small>元/年</small></div>'
+      + '<div class="s">' + (T.plan ? '預規劃步驟，落地後才進實省' : '沒有標「預規劃」的步驟')
+      + '</div></div>';
+
+  $('note').textContent = ROWS.length + ' 份交件檔　·　' + ok.length + ' 條流程（'
+    + done + ' 條資料完整）'
+    + (dup ? '　·　' + dup + ' 份是同一條流程的舊檔，已排除在合計外' : '')
+    + '　·　實省以 ' + RATE + ' 元／分鐘換算，只計人工步驟；新增產能以 ' + ADDON_RATE
+    + ' 元／分鐘換算　·　三個數字各自獨立，不要相加';
+
+  const ngN = ROWS.reduce((t, r) => t + (r.ng || 0), 0);
+  const wrN = ROWS.reduce((t, r) => t + (r.wr || 0), 0);
+  $('issN').innerHTML = ngN ? '<span class="pill ng">' + ngN + '</span>'
+    : wrN ? '<span class="pill wr">' + wrN + '</span>' : '<span class="pill ok">0</span>';
+
+  $('view').innerHTML = TAB === 'list' ? renderList() : renderIssues();
+}
+
+/* ────────────────────────────── 事件 ────────────────────────────── */
+$('btnPick').onclick = async () => {
+  if (!window.showDirectoryPicker)
+    return toast('這個瀏覽器不支援資料夾讀寫，請改用 Chrome 或 Edge', true);
+  try { DIR = await window.showDirectoryPicker({ mode:'readwrite' }); }
+  catch(e){
+    /* Chrome 有一份系統資料夾黑名單，選到就跳「資料夾中包含系統檔案」，
+       使用者按取消我們收到的是 AbortError。什麼都不說最糟 —— 看起來像按鈕壞了 */
+    if (e && e.name === 'AbortError') return toast('沒有選資料夾（桌面與家目錄會被 Chrome 擋住）', true);
+    return toast('開不了資料夾選擇：' + (e && e.message || e), true);
+  }
+  useDir(DIR);
+};
+function useDir(h){
+  DIR = h;
+  $('dirName').textContent = h.name;
+  $('dirName').title = h.name;
+  $('btnRescan').disabled = false;
+  $('btnResume').hidden = true;
+  rememberDir(h);
+  scan();
+}
+$('btnResume').onclick = async () => {
+  const h = await lastDir();
+  if (!h) return toast('找不到上次的資料夾，請重新選一次', true);
+  let p = 'denied';
+  try { p = await h.requestPermission({ mode:'readwrite' }); }
+  catch(e){ return toast('重新取得權限失敗：' + (e && e.message || e), true); }
+  if (p !== 'granted') return toast('沒有拿到資料夾權限，請重新選一次', true);
+  useDir(h);
+};
+/* 開頁時如果上次有選過，就把那顆按鈕亮出來 —— 不自動開，那需要使用者手勢 */
+(async () => {
+  const h = await lastDir();
+  if (!h) return;
+  $('btnResume').hidden = false;
+  $('btnResume').textContent = '繼續上次：' + h.name;
+})();
+$('btnRescan').onclick = scan;
+$('q').oninput = render;
+$('grp').onchange = render;
+$('only').onchange = render;
+$('rate').oninput = e => {
+  const v = Number(e.target.value);
+  RATE = v > 0 ? v : 5;
+  if (ROWS.length) render();
+};
+$('addonRate').oninput = e => {
+  const v = Number(e.target.value);
+  ADDON_RATE = v > 0 ? v : 10;
+  if (ROWS.length) render();
+};
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  TAB = b.dataset.t;
+  document.querySelectorAll('#tabs button[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+$('view').addEventListener('click', e => {
+  const th = e.target.closest('th[data-k]');
+  if (th){
+    const k = th.dataset.k;
+    SORT = { k, dir: SORT.k === k ? -SORT.dir : (['dept','title','author'].indexOf(k) >= 0 ? 1 : -1) };
+    return render();
+  }
+  const eb = e.target.closest('[data-edit]');
+  if (eb) return openEditor(eb.dataset.edit);
+  const tr = e.target.closest('tr[data-p]');
+  if (tr) return openEditor(tr.dataset.p);
+});
+
+/* ── CSV ── */
+$('btnCsv').onclick = () => {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const head = ['部門','流程題目','負責人','現況人工(人時/月)','AI後人工(人時/月)','淨改善%',
+                '實省(元/月)','新增產能(元/月)','儲備(元/月)','步數','要補','提醒','格式','匯出日',
+                '是否最新','部門正名','檔案'];
+  const lines = [head.map(q).join(',')];
+  filtered().forEach(r => lines.push([
+    r.dept, r.title, r.author,
+    r.err ? '' : (r.nowH == null ? '' : r.nowH.toFixed(3)),
+    r.err ? '' : (r.aftH == null ? '' : r.aftH.toFixed(3)),
+    r.pct == null ? '' : r.pct.toFixed(1),
+    valOf(r,'save')  == null ? '' : Math.round(valOf(r,'save')),
+    valOf(r,'addon') == null ? '' : Math.round(valOf(r,'addon')),
+    valOf(r,'plan')  == null ? '' : Math.round(valOf(r,'plan')),
+    r.steps || '', r.ng || 0, r.wr || 0,
+    r.err ? '讀不到' : (r.old ? '舊版' : '最新'), r.exported || '',
+    r.err ? '' : (r.latest === false ? '被取代' : (r.dupN > 1 ? '最新(共' + r.dupN + '份)' : '唯一')),
+    r.err ? '' : (r.deptOk ? '' : r.deptAs),
+    r.path
+  ].map(q).join(',')));
+  /* Excel 認 BOM 才不會把中文變亂碼 */
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'SOP總表_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('已匯出 ' + a.download);
+};
+
+/* ────────────────────────────── iframe 編輯 ──────────────────────────────
+   編輯器與標註器都借用同目錄的「SOP 工具組.html」，不在這裡重寫一份。
+   流程：載入 iframe → 等它說 hello → 送 open（整份 HTML 全文）
+        → 使用者改 → 按「存回原檔」→ 送 collect → 收到 collected → 寫檔。
+   ──────────────────────────────────────────────────────────────────── */
+const TOOL = 'SOP 工具組.html';
+let waitHello = null, waitCollect = null;
+
+/* 每次都把 iframe 整個換掉，不要改既有 iframe 的 src。
+   改 src 會在**最上層**的瀏覽紀錄多塞一筆，使用者按上一頁就跳回總表的
+   初始狀態、資料夾權限也掉了，得重選一次。iframe 第一次載入不留紀錄，
+   所以換成「移除舊節點、插入一個 src 已經設好的新節點」。 */
+function mountFrame(src){
+  const old = $('ovFrame');
+  const f = document.createElement('iframe');
+  f.id = 'ovFrame'; f.title = 'SOP 工具組';
+  if (src) f.src = src;
+  old.replaceWith(f);
+  return f;
+}
+
+window.addEventListener('message', e => {
+  const f = $('ovFrame');
+  if (!f || !f.contentWindow || e.source !== f.contentWindow) return;
+  const d = e.data; if (!d || d.ns !== 'sop-hub') return;
+  if (d.type === 'hello'    && waitHello){ const r = waitHello; waitHello = null; r(); }
+  if (d.type === 'opened'   && !d.ok) toast('編輯器載入失敗：' + (d.error || ''), true);
+  if (d.type === 'collected' && waitCollect){ const r = waitCollect; waitCollect = null; r(d); }
+});
+
+/* 舊寫法的檔案要先轉成現行寫法才能送進編輯器。
+   編輯器只認現行寫法，它自己的舊檔遷移會把現況那側的件數整條沿用到
+   AI 導入後那一側 —— 直接丟給它編輯再存回，等於把錯的數字寫進原檔。 */
+function prepare(text, r){
+  if (!r.d) return { html:text, rescaled:[], changed:false };
+  const t = CALC.toFlow(r.d);
+  if (!t.changed) return { html:text, rescaled:[], changed:false };
+  const json = JSON.stringify(t.doc).replace(/</g, '\\u003c');
+  const html = text.replace(RE_DATA,
+    () => '<script type="application/json" id="sop-data">' + json + '<' + '/script>');
+  return { html:html, rescaled:t.rescaled, changed:true, from:t.from };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   就地編輯 ── 不離開總表
+   使用者的回饋：點一列就整頁被 SOP 工具組吃掉，切不回總表。
+   所以工時紀錄的編輯直接做在這一頁：同一個 view 換一塊內容，
+   按「← 回總表」就回來，資料夾權限、捲軸位置、搜尋條件全都還在。
+
+   存檔只改檔案裡的 `sop-data` JSON，其餘 HTML 原封不動 ——
+   總表沒有那份交件檔的版面樣板，也不需要有。
+   要順便把檔案外殼也換成新版的，走「批次重新產生」（那支才需要借用工具組）。
+
+   截圖標註不在這裡做：那是另一整套編輯器，要改截圖請按「用 SOP 工具組開」。
+   ══════════════════════════════════════════════════════════════ */
+const KINDS = [{v:'manual',l:'人工'},{v:'ai',l:'AI'}];
+const KIND_LEGACY = {system:'系統（舊版）'};
+const ACTS = [{v:'exec',l:'執行'},{v:'judge',l:'判斷'},{v:'review',l:'審核'},
+              {v:'wait',l:'等待'},{v:'maint',l:'維護'}];
+const UNITS = [{v:'sec',l:'秒'},{v:'min',l:'分鐘'},{v:'hr',l:'小時'}];
+const FREQS = [{v:'day',l:'日'},{v:'week',l:'週'},{v:'month',l:'月'},
+               {v:'quarter',l:'季'},{v:'year',l:'年'},{v:'none',l:'不定期（不計）'}];
+
+let VIEW = 'list';        // list | edit
+let ED = null;            // 正在編輯的那一列
+let EDDOC = null;         // 編輯中的資料（改的是複本，按存檔才寫回）
+let EDTEXT = '';          // 原檔全文，存檔時只換裡面的 JSON
+let EDDIRTY = false;
+
+/* 備註欄隨內容長高。先把高度歸零再量 scrollHeight，用 'auto' 在某些情況下
+   量到的是上一次的高度，空白欄位會撐成一大塊。上限 140px，再長就自己捲。 */
+function grow(t){
+  if (!t) return;
+  t.style.height = '0px';
+  t.style.height = Math.min(140, Math.max(30, t.scrollHeight + 2)) + 'px';
+}
+const optH = (arr, sel) => arr.map(o =>
+  '<option value="' + o.v + '"' + (o.v === sel ? ' selected' : '') + '>' + o.l + '</option>').join('');
+/* 舊檔可能還帶著「系統」。平常下拉只給人工／AI，目前值是舊值時要補進去，
+   否則選單會顯示成「人工」，使用者一動別的欄位就被無聲改掉別人填的分類。 */
+const kindOpts = cur => KINDS.concat(KIND_LEGACY[cur] ? [{v:cur, l:KIND_LEGACY[cur]}] : []);
+
+async function openEditor(path){
+  const r = ROWS.find(x => x.path === path);
+  if (!r) return;
+  if (r.err) return toast('這份讀不到，沒辦法編輯：' + r.err, true);
+
+  busy(true, '讀取檔案…');
+  let text;
+  try { text = await (await r.handle.getFile()).text(); }
+  catch(e){ busy(false); return toast('讀不到檔案：' + (e && e.message || e), true); }
+  busy(false);
+
+  /* 舊寫法先轉成現行寫法再編輯，否則畫面上的「每次多久」與工時對不起來。
+     轉換保證每一步的月人時不變，只有節奏跟大家不同的步驟會被換算。 */
+  const t = CALC.toFlow(r.d);
+  EDDOC = JSON.parse(JSON.stringify(t.doc));
+  delete EDDOC.__read;
+  EDTEXT = text; ED = r; EDDIRTY = false; VIEW = 'edit';
+  render();
+  window.scrollTo(0, 0);
+  if (t.changed){
+    const n = t.rescaled.length;
+    toast('這份是舊寫法（' + t.from + '），已轉成現行寫法'
+      + (n ? '，其中 ' + n + ' 步的「每次多久」換算成同一個節奏，請覆核' : ''));
+    if (n) console.info('換算過的步驟：', t.rescaled);
+  }
+}
+
+function backToList(){
+  if (EDDIRTY && !confirm('有還沒存回原檔的修改，離開就會丟掉。確定？')) return;
+  VIEW = 'list'; ED = null; EDDOC = null; EDTEXT = ''; EDDIRTY = false;
+  render();
+}
+function edMark(){ EDDIRTY = true; const el = $('edDirty'); if (el) el.textContent = '● 未存'; }
+
+/* 這一步算得出幾人時。回 null 代表資料不足 */
+const edMH = (st, l) => CALC.mh(EDDOC, st, l);
+
+function edStepHTML(st, i, l, n){
+  const m = edMH(st, l);
+  const paid = CALC.paidOf(EDDOC, st.kind);
+  const bad = !String(st.title || '').trim()
+    || (!st.plan && m == null)
+    || (!st.plan && st.addon && (st.altDur == null || st.altDur === ''));
+  const calc = st.plan ? '<span class="calc">預規劃 · 不計</span>'
+    : m == null ? '<span class="calc na">工時待補</span>'
+    : !paid ? '<span class="calc zero">0 元 · ' + num(m) + ' 人時/月</span>'
+    : '<span class="calc">≈ ' + num(m) + ' 人時/月</span>';
+  const thumb = st.thumb
+    ? '<img src="' + st.thumb + '" alt="" data-zoom="' + (st.full || st.thumb) + '">'
+    : '<span>無圖</span>';
+  return '<div class="edstep' + (bad ? ' warn' : '') + '" data-list="' + l + '" data-i="' + i + '">'
+    + '<div class="ord"><div class="n">' + (i + 1) + '</div>'
+      + '<button data-mv="-1" title="往上"' + (i === 0 ? ' disabled' : '') + '>▲</button>'
+      + '<button data-mv="1" title="往下"' + (i === n - 1 ? ' disabled' : '') + '>▼</button></div>'
+    + '<div class="th">' + thumb + '</div>'
+    + '<div class="bd">'
+      + '<div class="r">'
+        + '<select class="k" data-sk="kind" data-v="' + st.kind + '" title="誰出力。只有人工計錢，AI 是 0 元">'
+          + optH(kindOpts(st.kind), st.kind) + '</select>'
+        + '<select class="a" data-sk="act" title="在做什麼。純描述，不參與計算">' + optH(ACTS, st.act) + '</select>'
+        + '<input class="t" data-sk="title" value="' + esc(st.title) + '" placeholder="步驟名稱">'
+        + calc
+        + '<button class="x" data-del="1" title="刪除這一步">✕</button>'
+      + '</div>'
+      + '<div class="r">'
+        + '<span class="dim">每次</span>'
+        + '<input class="num" data-sk="dur" type="number" min="0" step="any" value="'
+          + (st.dur == null ? '' : st.dur) + '" placeholder="0">'
+        + '<select class="u" data-sk="unit">' + optH(UNITS, st.unit) + '</select>'
+        + '<span class="dim">，</span>'
+        + '<input class="num" data-sk="qty" type="number" min="0" step="any" value="'
+          + (st.qty == null ? 1 : st.qty) + '" title="份數只記錄數量，不計入工時">'
+        + '<span class="dim">份</span>'
+        + '<label class="ck' + (st.plan ? ' on' : '') + '" title="有規劃但還不能算進效益。勾了這一步就不進任何總計">'
+          + '<input type="checkbox" data-sk="plan"' + (st.plan ? ' checked' : '') + '>預規劃</label>'
+        + (l === 'aft'
+          ? '<label class="ck ad' + (st.addon ? ' on' : '') + '" title="現況沒做、導入後才多出來的事。不省工時，改走附加產值">'
+              + '<input type="checkbox" data-sk="addon"' + (st.addon ? ' checked' : '') + '>新增產值</label>'
+            + '<span class="alt' + (st.addon ? '' : ' off') + '" title="同一件事若改由人來做，每次要多久">'
+              + '人工要<input class="num" data-sk="altDur" type="number" min="0" step="any" value="'
+                + (st.altDur == null ? '' : st.altDur) + '" placeholder="0">'
+              + '<select class="u" data-sk="altUnit">' + optH(UNITS, st.altUnit || 'min') + '</select></span>'
+          : '')
+      + '</div>'
+      + '<div class="r">'
+        + '<input class="o" data-sk="obj" value="' + esc(st.obj) + '" placeholder="檔案／任務">'
+        + '<input class="o" data-sk="iface" value="' + esc(st.iface) + '" placeholder="介面，例：Excel、TIPTOP">'
+      + '</div>'
+      + '<textarea data-sk="desc" rows="1" placeholder="備註（選填）">' + esc(st.desc) + '</textarea>'
+    + '</div></div>';
+}
+
+function edColHTML(l){
+  const steps = EDDOC[l] || [];
+  const R = CALC.run(EDDOC, l);
+  const roll = CALC.roll(EDDOC, l);
+  const isAft = l === 'aft';
+  return '<div class="edcol ' + (isAft ? 'b' : 'a') + '" data-list="' + l + '">'
+    + '<div class="h"><span>' + (isAft ? 'AI 導入後' : '現況流程') + '</span>'
+      + '<span class="dim">' + steps.length + ' 步</span><span class="sp"></span>'
+      + '<span class="t">人工 ' + num(roll.manual) + ' 人時/月</span></div>'
+    + '<div class="edrun"><span>這條流程　每</span>'
+      + '<input data-rk="every" type="number" min="1" step="any" value="' + (R.every == null ? 1 : R.every) + '">'
+      + '<select data-rk="freq">' + optH(FREQS, R.freq || 'day') + '</select>'
+      + '<span>，</span><input data-rk="vol" type="number" min="0" step="any" value="'
+        + (R.vol == null ? '' : R.vol) + '"><span>次，共</span>'
+      + '<input data-rk="hc" type="number" min="1" step="any" value="' + (R.hc == null ? 1 : R.hc) + '">'
+      + '<span>人</span></div>'
+    + '<div class="edsteps">'
+      + (steps.length ? steps.map((st, i) => edStepHTML(st, i, l, steps.length)).join('')
+                      : '<div class="dim" style="padding:14px;text-align:center">還沒有步驟</div>')
+    + '</div>'
+    + '<button class="edadd" data-add="' + l + '">＋ 新增步驟</button></div>';
+}
+
+function edSumHTML(){
+  const rn = CALC.roll(EDDOC, 'now'), ra = CALC.roll(EDDOC, 'aft');
+  const pct = rn.manual > 0 && ra.steps ? (rn.manual - ra.manual) / rn.manual * 100 : null;
+  const save = (rn.steps && ra.steps) ? (rn.manual - ra.manual) * 60 * RATE : null;
+  return '<div><div class="l">現況人工</div><div class="n">' + num(rn.manual)
+      + ' <small>人時/月</small></div></div>'
+    + '<div><div class="l">AI 導入後人工</div><div class="n" style="color:var(--ai)">' + num(ra.manual)
+      + ' <small>人時/月</small></div></div>'
+    + '<div><div class="l">淨改善</div><div class="n">'
+      + (pct == null ? '—' : (pct >= 0 ? '↓ ' : '↑ ') + Math.abs(pct).toFixed(1) + '<small>%</small>')
+      + '</div></div>'
+    + '<div><div class="l">實省</div><div class="n" style="color:' + (save > 0 ? 'var(--ai)' : 'var(--ink3)') + '">'
+      + NT(save) + ' <small>元/月</small></div></div>'
+    + '<div><div class="l">新增產能（等效）</div><div class="n" style="color:var(--addon)">'
+      + (ra.addon ? NT(ra.addon * 60 * ADDON_RATE) : '—') + ' <small>元/月</small></div></div>';
+}
+
+function renderEdit(){
+  const d = EDDOC;
+  return '<div class="edbar">'
+      + '<button id="edBack">← 回總表</button>'
+      + '<b>' + esc(d.dept || '（未填部門）') + '　' + esc(d.title || '（未填題目）') + '</b>'
+      + '<span class="fn">' + esc(ED.path) + '</span>'
+      + '<span class="sp"></span><span class="dirty" id="edDirty">' + (EDDIRTY ? '● 未存' : '') + '</span>'
+      + '<button id="edTool" title="要改截圖或標註才需要開它。改完在那邊匯出，再放回這個資料夾">用 SOP 工具組開</button>'
+      + '<button id="edSave" class="pri">存回原檔</button></div>'
+    + '<div class="edsum" id="edSum">' + edSumHTML() + '</div>'
+    + '<div class="edcard"><h3>基本資料</h3><div class="edmeta">'
+      + '<label class="g">部門<input data-dk="dept" value="' + esc(d.dept) + '" list="deptList" '
+        + 'placeholder="照公司通訊錄，例：品保"></label>'
+      + '<label class="g">流程題目<input data-dk="title" value="' + esc(d.title) + '"></label>'
+      + '<label>填表人<input data-dk="author" value="' + esc(d.author) + '"></label>'
+      + '</div></div>'
+    + '<div class="edcols">' + edColHTML('now') + edColHTML('aft') + '</div>';
+}
+
+/* 打字時只更新數字，不重建 DOM —— 不然游標會跳掉 */
+function edRefresh(){
+  $('edSum').innerHTML = edSumHTML();
+  ['now', 'aft'].forEach(l => {
+    const roll = CALC.roll(EDDOC, l);
+    const col = document.querySelector('.edcol[data-list="' + l + '"]');
+    if (col) col.querySelector('.h .t').textContent = '人工 ' + num(roll.manual) + ' 人時/月';
+    (EDDOC[l] || []).forEach((st, i) => {
+      const row = document.querySelector('.edstep[data-list="' + l + '"][data-i="' + i + '"]');
+      if (!row) return;
+      const m = edMH(st, l), paid = CALC.paidOf(EDDOC, st.kind);
+      const c = row.querySelector('.calc');
+      if (c){
+        c.className = 'calc' + (st.plan ? '' : m == null ? ' na' : !paid ? ' zero' : '');
+        c.textContent = st.plan ? '預規劃 · 不計'
+          : m == null ? '工時待補'
+          : !paid ? '0 元 · ' + num(m) + ' 人時/月'
+          : '≈ ' + num(m) + ' 人時/月';
+      }
+      row.classList.toggle('warn', !String(st.title || '').trim()
+        || (!st.plan && m == null)
+        || (!st.plan && st.addon && (st.altDur == null || st.altDur === '')));
+    });
+  });
+}
+
+const NUMKEYS = ['dur', 'qty', 'altDur'];
+function edStepOf(el){
+  const row = el.closest('.edstep'); if (!row) return null;
+  const arr = EDDOC[row.dataset.list] || [];
+  return { st: arr[Number(row.dataset.i)], l: row.dataset.list, i: Number(row.dataset.i) };
+}
+
+document.addEventListener('input', e => {
+  if (VIEW !== 'edit') return;
+  const t = e.target;
+  if (t.dataset.dk){ EDDOC[t.dataset.dk] = t.value; edMark(); return; }
+  if (t.dataset.rk){
+    const k = t.dataset.rk, l = t.closest('.edcol').dataset.list;
+    const raw = t.value;
+    const map = l === 'now' ? { every:'runEvery', freq:'runFreq', hc:'runHc', vol:'volume' }
+                            : { every:'aftEvery', freq:'aftFreq', hc:'aftHc', vol:'aftVolume' };
+    EDDOC[map[k]] = (k === 'freq') ? raw : (raw === '' ? null : (Number(raw) > 0 ? Number(raw) : null));
+    edMark(); edRefresh(); return;
+  }
+  if (t.dataset.sk){
+    const o = edStepOf(t); if (!o) return;
+    const k = t.dataset.sk;
+    o.st[k] = NUMKEYS.indexOf(k) >= 0 ? (t.value === '' ? null : Number(t.value)) : t.value;
+    if (k === 'desc') grow(t);
+    edMark(); edRefresh();
+  }
+});
+
+document.addEventListener('change', e => {
+  if (VIEW !== 'edit') return;
+  const t = e.target;
+  if (!t.dataset.sk && !t.dataset.rk) return;
+  if (t.dataset.rk) return;                     // input 事件已經處理過
+  const o = edStepOf(t); if (!o) return;
+  const k = t.dataset.sk;
+  if (k === 'plan' || k === 'addon'){
+    o.st[k] = t.checked; edMark(); render();     // 會多出／收起「人工要 N 分」，整列重畫
+    return;
+  }
+  if (k === 'kind'){
+    o.st.kind = t.value; t.dataset.v = t.value;  // 換色
+    edMark(); edRefresh(); return;
+  }
+  if (k === 'act' || k === 'unit' || k === 'altUnit'){ o.st[k] = t.value; edMark(); edRefresh(); }
+});
+
+document.addEventListener('click', e => {
+  if (VIEW !== 'edit') return;
+  const zoom = e.target.closest('[data-zoom]');
+  if (zoom){ $('lbImg').src = zoom.dataset.zoom; $('lb').classList.add('on'); return; }
+  const add = e.target.closest('[data-add]');
+  if (add){
+    const l = add.dataset.add;
+    (EDDOC[l] = EDDOC[l] || []).push({
+      id: 's' + Math.random().toString(36).slice(2, 9),
+      kind: l === 'aft' ? 'ai' : 'manual', act: 'exec', title: '', desc: '',
+      dur: null, unit: 'min', qty: 1, plan: false, addon: false,
+      altDur: null, altUnit: 'min', obj: '', iface: '', thumb: null, full: null
+    });
+    edMark(); render(); return;
+  }
+  const mv = e.target.closest('[data-mv]');
+  if (mv){
+    const o = edStepOf(mv); if (!o) return;
+    const arr = EDDOC[o.l], j = o.i + Number(mv.dataset.mv);
+    if (j < 0 || j >= arr.length) return;
+    arr.splice(j, 0, arr.splice(o.i, 1)[0]);
+    edMark(); render(); return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del){
+    const o = edStepOf(del); if (!o) return;
+    if ((o.st.title || o.st.thumb) && !confirm('確定刪除這一步？')) return;
+    EDDOC[o.l].splice(o.i, 1);
+    edMark(); render(); return;
+  }
+  if (e.target.id === 'edBack') return backToList();
+  if (e.target.id === 'edSave') return saveEdit();
+  if (e.target.id === 'edTool') return openInTool();
+});
+$('lb').onclick = () => $('lb').classList.remove('on');
+
+/* 存回原檔：只換檔案裡的 sop-data JSON，其餘 HTML 原封不動。
+   順手把 schema、config、summary 寫成現行口徑 —— 01 的匯入讀的是這段 JSON，
+   所以即使檔案外殼還是舊版的，上傳回去的數字也是對的。 */
+async function saveEdit(){
+  if (!ED || !EDDOC) return;
+  const c = CALC.cfg(EDDOC);
+  const rn = CALC.roll(EDDOC, 'now'), ra = CALC.roll(EDDOC, 'aft');
+  EDDOC.schema = CURRENT;
+  EDDOC.updatedAt = new Date().toISOString();
+  EDDOC.exportedAt = EDDOC.updatedAt;      // 判斷誰是最新就是看這個欄位
+  EDDOC.config = { daysPerMonth:c.D, weeksPerMonth:c.W, ratePerMinute:RATE,
+                   addonRatePerMinute:ADDON_RATE, paidKinds:['manual'] };
+  EDDOC.summary = {
+    nowTotal:rn.manual, nowComplete:rn.complete, aftTotal:ra.manual, aftComplete:ra.complete,
+    nowWall:rn.wall, aftWall:ra.wall, addonHours:ra.addon, planHours:rn.plan + ra.plan,
+    nowSteps:rn.steps, aftSteps:ra.steps,
+    planSteps:rn.planSteps + ra.planSteps, addonSteps:ra.addonSteps,
+    savePct: rn.manual > 0 ? (rn.manual - ra.manual) / rn.manual * 100 : null
+  };
+  delete EDDOC.__read;
+
+  const json = JSON.stringify(EDDOC).replace(/</g, '\\u003c');
+  const text = EDTEXT.replace(RE_DATA,
+    () => '<script type="application/json" id="sop-data">' + json + '<' + '/script>');
+
+  busy(true, '寫回原檔…');
+  try {
+    /* 沿用原檔名。01 的匯入以「部門＋題目」當 key，檔名只給人辨識，
+       改檔名反而會讓收件匣多出一份看起來像新流程的檔案。 */
+    const w = await ED.handle.createWritable();
+    await w.write(text); await w.close();
+  } catch(err){
+    busy(false);
+    return toast('寫檔失敗：' + (err && err.message || err), true);
+  }
+  busy(false);
+  EDTEXT = text; EDDIRTY = false;
+  const nm = ED.name;
+  VIEW = 'list'; ED = null; EDDOC = null; EDTEXT = '';
+  toast('已存回 ' + nm);
+  scan();
+}
+
+/* 要改截圖或標註才需要開工具組。這裡開新分頁，總表這一頁不動。 */
+function openInTool(){
+  if (EDDIRTY) return toast('先按「存回原檔」，再用工具組開，不然改的會對不起來', true);
+  window.open(TOOL, '_blank');
+  toast('工具組開在新分頁了。在那邊按「開啟既有檔案」選 ' + ED.name + '，改完匯出再放回這個資料夾');
+}
+
+let regenStop = false;
+$('ovClose').onclick = () => { regenStop = true; toast('停止中，跑完這一份就收手'); };
+
+/* ── 批次重新產生：逐檔 open → collect → 寫回。
+      用途是把舊版檔升成最新格式，順便讓每份檔案的 config 換成編輯器目前的設定。 ── */
+$('btnRegen').onclick = async () => {
+  const rs = ROWS.filter(r => !r.err);
+  if (!rs.length) return;
+  if (!confirm('會逐檔用編輯器開一次再存回，共 ' + rs.length + ' 份。\n\n'
+    + '舊版檔會升成 ' + CURRENT + '，每份檔案的內容都會重新產生一次。\n'
+    + '建議先把整個資料夾備份起來。要繼續嗎？')) return;
+
+  $('ov').classList.add('on');
+  $('ovTitle').textContent = '批次重新產生';
+  $('ovClose').disabled = true;
+  let done = 0, bad = [], scaled = 0;
+  regenStop = false;
+  for (const r of rs){
+    if (regenStop) break;
+    $('ovFile').textContent = r.path;
+    busy(true, '重新產生 ' + (done + 1) + ' / ' + rs.length + '　' + r.name);
+    try {
+      const hello = new Promise(res => { waitHello = res; });
+      const f = mountFrame(TOOL);
+      await hello;
+      const text = await (await r.handle.getFile()).text();
+      const p = prepare(text, r);
+      scaled += p.rescaled.length;
+      f.contentWindow.postMessage({ ns:'sop-hub', type:'open', html:p.html, name:r.name }, '*');
+      await new Promise(res => setTimeout(res, 400));      // 等它把資料吃進去、畫完
+      const token = String(Date.now());
+      const got = await new Promise(res => {
+        waitCollect = res;
+        f.contentWindow.postMessage({ ns:'sop-hub', type:'collect', token }, '*');
+        setTimeout(() => { if (waitCollect){ waitCollect = null; res(null); } }, 20000);
+      });
+      if (!got || !got.ok) throw new Error(got && got.error || '取不回結果');
+      const w = await r.handle.createWritable();
+      await w.write(got.html); await w.close();
+      done++;
+    } catch(err){ bad.push(r.name + '：' + (err && err.message || err)); }
+  }
+  busy(false);
+  $('ovClose').disabled = false;
+  $('ov').classList.remove('on');
+  mountFrame(null);       // 把工具組整個卸掉，也不會留下瀏覽紀錄
+  toast(bad.length ? ('完成 ' + done + ' 份，' + bad.length + ' 份失敗')
+        : ('全部 ' + done + ' 份已重新產生' + (scaled ? '，' + scaled + ' 個步驟的時間經過換算，請覆核' : '')),
+        bad.length > 0);
+  if (bad.length) console.warn('批次重新產生失敗清單：\n' + bad.join('\n'));
+  scan();
+};
+
+/* 部門建議清單照公司通訊錄，跟 SOP 工具組同一份 */
+$('deptList').innerHTML = DEPTS.map(d => '<option value="' + d + '">').join('');
+
+/* 開檔前先講清楚這支需要什麼瀏覽器，不要等按了才說 */
+if (!window.showDirectoryPicker){
+  $('btnPick').disabled = true;
+  $('dirName').textContent = '這個瀏覽器不支援資料夾讀寫';
+}
+</script>
+</body>
+</html>

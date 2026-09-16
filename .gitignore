@@ -19,3 +19,8 @@ payload.json
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 各部門的真交件檔與整理中的原始資料（含內部系統截圖、工時與成本），絕對不能公開
+data/
+# 本機驗證與整理腳本：寫死本機路徑、描述內部 PM 流程，公開站用不到
+scripts/
