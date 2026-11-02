@@ -846,6 +846,10 @@ button,input,select,textarea{font-family:inherit}
 </div>
 
 <style>
+.app-form .project-context-fields{padding:18px;display:grid;gap:20px}
+.app-form .project-context-fields label{display:block;font-size:16px;font-weight:700;color:var(--ink)}
+.app-form .project-context-fields p{margin:4px 0 8px;color:var(--ink2);font-size:14px}
+.app-form .project-context-fields textarea{display:block;width:100%;min-height:88px;resize:vertical;line-height:1.7;font-size:16px;padding:10px 12px}
 .app-form .project-schedule{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:18px}
 .app-form .project-schedule .fld label{display:block;margin-bottom:6px;font-size:15.5px}
 .app-form .project-schedule .i{width:100%;min-width:0;font-size:16px;padding:10px}
@@ -888,6 +892,15 @@ button,input,select,textarea{font-family:inherit}
           <div class="fld"><label>流程題目 <span style="color:var(--warn)">*</span></label>
             <input class="i" id="mTitle" placeholder="例：供應商自主檢驗表異常稽核與退件通知"></div>
           <div class="fld"><label>填表人</label><input class="i" id="mAuthor" placeholder="姓名"></div>
+        </div>
+      </div>
+
+      <div class="card" id="projectContextCard" style="margin-bottom:14px">
+        <div class="chead"><div><h3>專案說明</h3></div></div>
+        <div class="project-context-fields">
+          <div class="fld"><label for="project-problem">問題</label><p id="project-problem-help">說明目前的困難與問題</p><textarea class="i" id="project-problem" data-context="problem" rows="3" maxlength="50000" aria-describedby="project-problem-help"></textarea></div>
+          <div class="fld"><label for="project-goal">目標</label><p id="project-goal-help">完成後的期待</p><textarea class="i" id="project-goal" data-context="goal" rows="3" maxlength="50000" aria-describedby="project-goal-help"></textarea></div>
+          <div class="fld"><label for="project-advanced">進階</label><p id="project-advanced-help">更進階的規劃</p><textarea class="i" id="project-advanced" data-context="advanced" rows="3" maxlength="50000" aria-describedby="project-advanced-help"></textarea></div>
         </div>
       </div>
 
@@ -3108,6 +3121,18 @@ const SHOWTIMES=[{v:'hr',l:'時',n:'人時',m:1},
                  {v:'min',l:'分',n:'人分',m:60},
                  {v:'sec',l:'秒',n:'人秒',m:3600}];
 const SCHEMA='sop-timesheet/4';
+const PROJECT_CONTEXT=[{key:'problem',label:'問題'},{key:'goal',label:'目標'},{key:'advanced',label:'進階'}];
+function projectContextAdopt(d){
+  if(d.projectContextVersion!=null&&d.projectContextVersion!==1)throw Error('專案說明版本不符');
+  const v=d.projectContext;
+  if(v!=null&&(typeof v!=='object'||Array.isArray(v)||Object.keys(v).some(k=>!PROJECT_CONTEXT.some(f=>f.key===k))))throw Error('問題／目標／進階欄位不符');
+  const out={};PROJECT_CONTEXT.forEach(f=>{const text=v&&v[f.key];if(text!=null&&(typeof text!=='string'||text.length>50000))throw Error(f.label+'必須是 50,000 字內的文字');out[f.key]=text==null?'':text.replace(/\r\n?/g,'\n');});return out;
+}
+function renderProjectContext(){PROJECT_CONTEXT.forEach(f=>{document.getElementById('project-'+f.key).value=S.projectContext[f.key]||'';});}
+document.getElementById('projectContextCard').addEventListener('input',e=>{
+  const key=e.target.dataset.context;if(!PROJECT_CONTEXT.some(f=>f.key===key))return;
+  S.projectContext[key]=e.target.value;mark();
+});
 const PROJECT_STAGES=['架構','文件收集','面板','Skill','排程器','部署','測試','實際導入'];
 function projectScheduleDate(value,year=new Date().getFullYear()){
   if(value==null||value==='')return '';
@@ -3148,7 +3173,7 @@ function blank(){
           runEvery:1, runFreq:'day', runHc:1,         // 現況這條流程：多久跑一輪、幾個人做
           aftVolume:null, aftEvery:null, aftFreq:'', aftHc:null,   // AI 導入後那條；留空＝沿用現況
           showUnit:'day', showTime:'hr',              // 畫面上工時用什麼單位顯示
-          now:[], aft:[], projectSchedule:{}, updatedAt:null};
+          now:[], aft:[], projectSchedule:{}, projectContext:{}, updatedAt:null};
 }
 /* 新步驟的預設值：第一層在現況頁給「人工」、AI 導入後頁給「AI」；
    件數與週期沿用基本資料的處理量，多數步驟開出來就不用改 */
@@ -3215,6 +3240,7 @@ function migStep(o,d){
 }
 function adopt(d){
   const o=Object.assign(blank(),d);
+  o.projectContext=projectContextAdopt(d);
   const schedule=d.projectSchedule;
   if(schedule!=null&&(typeof schedule!=='object'||Array.isArray(schedule)||Object.keys(schedule).some(k=>!PROJECT_STAGES.includes(k))))throw Error('交件時程欄位不符');
   if(d.projectScheduleVersion!=null&&d.projectScheduleVersion!==1)throw Error('交件時程版本不符');
@@ -3740,7 +3766,7 @@ function syncAftHints(){
   if(tip) tip.textContent='留空＝跟現況一樣（每 '+(S.runEvery??1)+' '+(F?F.l:'')+
     '，'+(S.volume??'—')+' 次，共 '+(S.runHc??1)+' 人）';
 }
-function render(){ renderProjectSchedule(); renderSegs(); renderList('now'); renderList('aft'); renderCmp(); renderSide(); renderChecks(); syncAftHints(); }
+function render(){ renderProjectContext(); renderProjectSchedule(); renderSegs(); renderList('now'); renderList('aft'); renderCmp(); renderSide(); renderChecks(); syncAftHints(); }
 
 /* ── 草稿 ── */
 function mark(){ dirty=true; S.updatedAt=new Date().toISOString(); saveDraft(); }
@@ -3777,6 +3803,7 @@ function buildHTML(){
   data.exportedAt=new Date().toISOString();
   data.projectSchedule=projectScheduleExport();
   data.projectScheduleVersion=1;
+  data.projectContext=projectContextAdopt(S);data.projectContextVersion=1;
   data.config={daysPerMonth:D,weeksPerMonth:W,ratePerMinute:CFG.rate,addonRatePerMinute:CFG.addonRate,
                paidKinds:CFG.paidKinds.slice()};
   const rn=sum(S.now), ra=sum(S.aft);
@@ -4183,6 +4210,10 @@ h1,h2,h3,h4{margin:0;font-weight:700}
 .hd h2{font-size:21px}.hd .m{font-size:12px;color:var(--ink3);margin-top:4px}
 .hd .vol{text-align:right;font-size:12px;color:var(--ink3);white-space:nowrap}
 .hd .vol b{display:block;font-size:20px;color:var(--ink)}
+#submitted-context{margin:0 0 22px;display:grid;gap:20px;background:#e7edf3;border-radius:8px;padding:20px}
+#submitted-context[hidden]{display:none}
+#submitted-context h3{font-size:16px;margin:0 0 6px}
+#submitted-context p{font-size:16px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;color:var(--ink2)}
 #submitted-schedule{background:#e7edf3;border-radius:8px;padding:18px;margin-bottom:22px}
 #submitted-schedule h3{font-size:17px;margin-bottom:12px}
 .submitted-schedule-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
@@ -4254,6 +4285,7 @@ h1,h2,h3,h4{margin:0;font-weight:700}
 <div class="wrap"><div class="doc">
   <div class="hd"><div><h2 id="h-title"></h2><div class="m" id="h-meta"></div></div>
     <div class="vol" id="h-vol"></div></div>
+  <div id="submitted-context" hidden></div>
   <section id="submitted-schedule" hidden><h3>預計完成日</h3><div class="submitted-schedule-grid" id="submitted-schedule-grid"></div></section>
   <div class="bar1">
     <div class="sub">
@@ -4366,6 +4398,11 @@ var GMAX=all.length?Math.max.apply(null,all):0;
 var pkN=Math.max.apply(null,NOW.map(one).map(function(v){return v||0;}).concat([0]));
 var pkA=Math.max.apply(null,AFT.map(one).map(function(v){return v||0;}).concat([0]));
 
+(function(){
+  var fields=[{key:'problem',label:'問題'},{key:'goal',label:'目標'},{key:'advanced',label:'進階'}],context=DATA.projectContext||{};
+  var html=fields.filter(function(f){return String(context[f.key]||'').trim();}).map(function(f){return '<section><h3>'+f.label+'</h3><p>'+esc(context[f.key])+'</p></section>';}).join('');
+  if(html){document.getElementById('submitted-context').hidden=false;document.getElementById('submitted-context').innerHTML=html;}
+})();
 (function(){
   var stages=['架構','文件收集','面板','Skill','排程器','部署','測試','實際導入'],schedule=DATA.projectSchedule||{};
   if(!stages.some(function(k){return schedule[k];}))return;
